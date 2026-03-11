@@ -1,0 +1,156 @@
+name: CI Build & Test
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-windows:
+    name: Build on Windows (${{ matrix.build_type }})
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+      fail-fast: false
+        
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+        
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Cache Build Artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          x64/${{ matrix.build_type }}
+          .vs
+        key: ${{ runner.os }}-build-${{ matrix.build_type }}-${{ hashFiles('**/*.vcxproj') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ matrix.build_type }}-
+          ${{ runner.os }}-build-
+      
+    - name: Build ArgoSentry
+      run: |
+        msbuild ArgoSentry.sln /p:Configuration=${{ matrix.build_type }} /p:Platform=x64 /m /verbosity:minimal
+      
+    - name: Verify Build Output
+      run: |
+        if (-Not (Test-Path "x64\${{ matrix.build_type }}\ArgoSentry.lib")) {
+          Write-Error "Build failed: ArgoSentry.lib not found"
+          exit 1
+        }
+        Write-Host "✅ Build successful: ArgoSentry.lib found"
+        Get-ChildItem "x64\${{ matrix.build_type }}" | Format-Table Name, Length
+        
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: argosentry-${{ matrix.build_type }}-${{ github.sha }}
+        path: |
+          x64/${{ matrix.build_type }}/*.lib
+          include/ArgoSentry/*.hh
+          dlls/*.dll
+        retention-days: 7
+        
+    - name: Build Test Executable
+      run: |
+        cd example
+        msbuild SimpleTest.vcxproj /p:Configuration=${{ matrix.build_type }} /p:Platform=x64
+      continue-on-error: true
+      
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: windows-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: cpp
+        queries: security-and-quality
+        
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Build for Analysis
+      run: |
+        msbuild ArgoSentry.sln /p:Configuration=Release /p:Platform=x64 /m
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:cpp"
+        
+  lint-check:
+    name: Documentation & File Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Check Required Files
+      run: |
+        echo "Checking for required files..."
+        files=("README.md" "LICENSE" "ROADMAP.md" "IMPLEMENTED_FEATURES.md")
+        for file in "${files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Missing required file: $file"
+            exit 1
+          fi
+          echo "✅ Found: $file"
+        done
+        
+    - name: Check Line Endings
+      run: |
+        echo "Checking for consistent line endings..."
+        if git ls-files | grep -E '\.(cpp|hh|h|hpp|c)$' | xargs file | grep CRLF > /dev/null; then
+          echo "⚠️ Warning: Found CRLF line endings in source files"
+        else
+          echo "✅ Line endings check passed"
+        fi
+        
+    - name: Markdown Lint
+      uses: DavidAnson/markdownlint-cli2-action@v16
+      with:
+        globs: '**/*.md'
+      continue-on-error: true
+
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [build-windows, code-quality, lint-check]
+    if: always()
+    
+    steps:
+    - name: Check Build Status
+      run: |
+        echo "## Build Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- Build Windows: ${{ needs.build-windows.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Code Quality: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Lint Check: ${{ needs.lint-check.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ needs.build-windows.result }}" == "success" ]]; then
+          echo "✅ **All builds passed successfully!**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Build failed. Please check the logs.**" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi

@@ -1,0 +1,205 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v2.3.0
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v2.3.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    name: Build & Create Release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+        
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Extract Version
+      id: version
+      run: |
+        if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+          $VERSION = "${{ github.event.inputs.version }}"
+        } else {
+          $VERSION = "${{ github.ref_name }}"
+        }
+        echo "version=$VERSION" >> $env:GITHUB_OUTPUT
+        echo "Version: $VERSION"
+      
+    - name: Build Release (x64)
+      run: |
+        msbuild ArgoSentry.sln /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
+        
+    - name: Verify Build
+      run: |
+        if (-Not (Test-Path "x64\Release\ArgoSentry.lib")) {
+          Write-Error "❌ Build failed: ArgoSentry.lib not found"
+          exit 1
+        }
+        Write-Host "✅ Build successful"
+        
+    - name: Package Release
+      run: |
+        $VERSION = "${{ steps.version.outputs.version }}"
+        $RELEASE_DIR = "ArgoSentry-$VERSION"
+        
+        # Create release structure
+        New-Item -ItemType Directory -Force -Path $RELEASE_DIR
+        New-Item -ItemType Directory -Force -Path "$RELEASE_DIR\lib"
+        New-Item -ItemType Directory -Force -Path "$RELEASE_DIR\include"
+        New-Item -ItemType Directory -Force -Path "$RELEASE_DIR\dlls"
+        New-Item -ItemType Directory -Force -Path "$RELEASE_DIR\docs"
+        New-Item -ItemType Directory -Force -Path "$RELEASE_DIR\examples"
+        
+        # Copy library
+        Copy-Item -Path "x64\Release\ArgoSentry.lib" -Destination "$RELEASE_DIR\lib\"
+        
+        # Copy headers
+        Copy-Item -Path "include\ArgoSentry\*" -Destination "$RELEASE_DIR\include\ArgoSentry\" -Recurse
+        
+        # Copy DLLs
+        Copy-Item -Path "dlls\*" -Destination "$RELEASE_DIR\dlls\"
+        
+        # Copy documentation
+        Copy-Item -Path "README.md" -Destination "$RELEASE_DIR\"
+        Copy-Item -Path "LICENSE" -Destination "$RELEASE_DIR\"
+        Copy-Item -Path "ROADMAP.md" -Destination "$RELEASE_DIR\docs\"
+        Copy-Item -Path "IMPLEMENTED_FEATURES.md" -Destination "$RELEASE_DIR\docs\"
+        
+        # Copy examples
+        Copy-Item -Path "example\*.cpp" -Destination "$RELEASE_DIR\examples\"
+        Copy-Item -Path "example\*.h" -Destination "$RELEASE_DIR\examples\" -ErrorAction SilentlyContinue
+        
+        # Create installation guide
+        @"
+        # ArgoSentry $VERSION - Installation Guide
+        
+        ## Quick Install
+        
+        1. **Copy libraries:**
+           - Copy `lib/ArgoSentry.lib` to your project's library folder
+           - Copy `dlls/*.dll` to your executable directory
+           
+        2. **Add include path:**
+           - Add `include/` to your compiler's include directories
+           
+        3. **Link library:**
+           - Add `ArgoSentry.lib` to linker input
+           - Add `vmm.lib` from `dlls/` to linker input
+           
+        4. **Include headers:**
+           ``````cpp
+           #include <ArgoSentry/dma.hh>
+           using namespace ArgoSentry;
+           ``````
+           
+        ## Build from Source
+        
+        See README.md for detailed build instructions.
+        
+        ## Examples
+        
+        Check the `examples/` folder for usage examples.
+        
+        ## Documentation
+        
+        - README.md - Main documentation
+        - docs/ROADMAP.md - Future features
+        - docs/IMPLEMENTED_FEATURES.md - Version history
+        
+        ## Support
+        
+        GitHub: https://github.com/bujor2711/ArgoSentry
+        Issues: https://github.com/bujor2711/ArgoSentry/issues
+        "@ | Out-File -FilePath "$RELEASE_DIR\INSTALL.md" -Encoding utf8
+        
+        # Create archive
+        Compress-Archive -Path "$RELEASE_DIR\*" -DestinationPath "ArgoSentry-$VERSION-windows-x64.zip" -Force
+        
+        Write-Host "✅ Release package created: ArgoSentry-$VERSION-windows-x64.zip"
+        Get-ChildItem "ArgoSentry-$VERSION-windows-x64.zip" | Format-Table Name, @{Name="Size (MB)"; Expression={[math]::Round($_.Length/1MB, 2)}}
+        
+    - name: Generate Release Notes
+      id: release_notes
+      run: |
+        $VERSION = "${{ steps.version.outputs.version }}"
+        
+        $NOTES = @"
+        ## 🎉 ArgoSentry $VERSION
+        
+        ### 📦 What's Included
+        - **ArgoSentry.lib** - Main library (x64)
+        - **Headers** - Complete API in `include/ArgoSentry/`
+        - **DLLs** - Required dependencies (vmm.dll, leechcore.dll, FTD3XX.dll)
+        - **Examples** - Sample code and usage
+        - **Documentation** - README, ROADMAP, changelog
+        
+        ### 🚀 Quick Start
+        ``````bash
+        # Extract archive
+        unzip ArgoSentry-$VERSION-windows-x64.zip
+        cd ArgoSentry-$VERSION
+        
+        # Copy DLLs to your project
+        copy dlls\*.dll YourProject\
+        
+        # Link against lib/ArgoSentry.lib
+        ``````
+        
+        ### 📚 Documentation
+        - [Getting Started](README.md)
+        - [Full Changelog](docs/IMPLEMENTED_FEATURES.md)
+        - [Future Features](docs/ROADMAP.md)
+        
+        ### 🔧 Requirements
+        - **OS:** Windows 10/11 (x64)
+        - **Compiler:** MSVC 2022+ or Visual Studio 2019+
+        - **C++ Standard:** C++17 or later
+        - **Hardware:** DMA-capable FPGA device
+        
+        ### ⚠️ Breaking Changes
+        None - fully backward compatible with v2.2
+        
+        ### 🐛 Bug Fixes & Improvements
+        See [IMPLEMENTED_FEATURES.md](docs/IMPLEMENTED_FEATURES.md) for detailed changelog.
+        
+        ---
+        
+        **Full Changelog:** https://github.com/bujor2711/ArgoSentry/blob/master/IMPLEMENTED_FEATURES.md
+        "@
+        
+        $NOTES | Out-File -FilePath "release_notes.md" -Encoding utf8
+        echo "notes_file=release_notes.md" >> $env:GITHUB_OUTPUT
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ArgoSentry-${{ steps.version.outputs.version }}-windows-x64.zip
+        body_path: ${{ steps.release_notes.outputs.notes_file }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        make_latest: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload Release Asset
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-package
+        path: ArgoSentry-${{ steps.version.outputs.version }}-windows-x64.zip
+        retention-days: 90
