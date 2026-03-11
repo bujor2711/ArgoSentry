@@ -17,6 +17,7 @@ DMABuilder::DMABuilder()
     , logging_level_(2)  // Warning level
     , scan_chunk_size_(1 * 1024 * 1024)  // 1MB chunks
     , max_read_size_(10 * 1024 * 1024)  // 10MB max
+    , rate_limit_bytes_per_sec_(0)  // v2.3: Unlimited by default
 {
 }
 
@@ -83,6 +84,11 @@ DMABuilder& DMABuilder::with_max_read_size(size_t max_size) {
     return *this;
 }
 
+DMABuilder& DMABuilder::with_rate_limit(size_t bytes_per_sec) {
+    rate_limit_bytes_per_sec_ = bytes_per_sec;
+    return *this;
+}
+
 std::unique_ptr<DMA> DMABuilder::build() const {
     // Validate configuration before building
     if (!is_valid()) {
@@ -112,6 +118,12 @@ std::unique_ptr<DMA> DMABuilder::build() const {
         if (auto_start_health_monitoring_) {
             dma->start_automatic_health_monitoring();
         }
+    }
+
+    // Configure rate limiting (v2.3)
+    if (rate_limit_bytes_per_sec_ > 0) {
+        dma->enable_rate_limiting(true);
+        dma->set_rate_limit(rate_limit_bytes_per_sec_);
     }
 
     // TODO: Apply other configurations when DMA class exposes setters

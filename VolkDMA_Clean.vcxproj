@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -10,16 +10,13 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  
   <!-- Headers - Only main library -->
   <ItemGroup>
-    <ClInclude Include="include\VolkDMA\async.hh" />
     <ClInclude Include="include\VolkDMA\batch.hh" />
     <ClInclude Include="include\VolkDMA\cache.hh" />
     <ClInclude Include="include\VolkDMA\config.hh" />
-    <ClInclude Include="include\VolkDMA\builder.hh" />
-    <ClInclude Include="include\VolkDMA\differ.hh" />
     <ClInclude Include="include\VolkDMA\dma.hh" />
-    <ClInclude Include="include\VolkDMA\dma_internal.hh" />
     <ClInclude Include="include\VolkDMA\dumper.hh" />
     <ClInclude Include="include\VolkDMA\health.hh" />
     <ClInclude Include="include\VolkDMA\inputstate.hh" />
@@ -32,57 +29,32 @@
     <ClInclude Include="external\vmm\vmmdll.h" />
     <ClInclude Include="external\VolkLog\include\VolkLog\log.hh" />
   </ItemGroup>
+  
   <!-- External Libraries -->
   <ItemGroup>
     <Library Include="external\leechcore\leechcore.lib" />
     <Library Include="external\vmm\vmm.lib" />
   </ItemGroup>
+  
   <!-- Source Files - Only main library (NO mock, NO tests, NO examples) -->
   <ItemGroup>
-    <ClCompile Include="example\list_processes.cpp" />
-    <ClCompile Include="example\show_all_processes.cpp" />
-    <ClCompile Include="src\async.cpp" />
     <ClCompile Include="src\batch.cpp" />
     <ClCompile Include="src\cache.cpp" />
     <ClCompile Include="src\config.cpp" />
-    <ClCompile Include="src\builder.cpp" />
-    <ClCompile Include="src\differ.cpp" />
     <ClCompile Include="src\dma.cpp" />
-    <ClCompile Include="src\dma_differ_integration.cpp" />
     <ClCompile Include="src\health_simple.cpp" />
     <ClCompile Include="src\inputstate.cpp" />
     <ClCompile Include="src\memory_layout.cpp" />
     <ClCompile Include="src\metrics.cpp" />
     <ClCompile Include="src\process.cpp" />
     <ClCompile Include="src\validators.cpp" />
-    <ClCompile Include="src\dma_batch_integration.cpp" />
-    <ClCompile Include="src\rate_limiter.cpp" />
   </ItemGroup>
+  
   <!-- Documentation -->
   <ItemGroup>
     <None Include="CHANGELOG.md" />
-    <None Include="example\build.bat" />
-    <None Include="example\compile_process_lister.bat" />
-    <None Include="example\QUICKSTART.md" />
-    <None Include="example\README.md" />
-    <None Include="example\SimpleTest.vcxproj" />
-    <None Include="example\TestDMA.vcxproj" />
-    <None Include="example\WHERE_IS_EXE.md" />
-    <None Include="example\x64\Release\list_target_processes.ps1" />
-    <None Include="example\x64\Release\PROCESS_DISCOVERY_GUIDE.md" />
-    <None Include="example\x64\Release\run_as_admin.bat" />
-    <None Include="example\x64\Release\run_dma_test.ps1" />
-    <None Include="example\x64\Release\run_test_admin.ps1" />
-    <None Include="example\x64\Release\SUCCESS.md" />
-    <None Include="example\x64\Release\TEST_DMA_READY.md" />
-    <None Include="example\x64\Release\TROUBLESHOOTING.md" />
-    <None Include="example\x64\Release\WHY_PROCESSES_NOT_FOUND.md" />
-    <None Include="IMPLEMENTATION_COMPLETE.md" />
-    <None Include="LIBRARY_STATUS_2026.md" />
     <None Include="README.md" />
-    <None Include="RELEASE_NOTES_v2.0.md" />
     <None Include="ROADMAP.md" />
-    <None Include="v2.0_IMPLEMENTATION_COMPLETE.md" />
     <None Include="volkdma.ini" />
     <None Include="docs\API_REFERENCE.md" />
     <None Include="docs\ARCHITECTURE.md" />
@@ -91,6 +63,7 @@
     <None Include="docs\GETTING_STARTED.md" />
     <None Include="docs\README.md" />
   </ItemGroup>
+  
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -98,13 +71,16 @@
     <RootNamespace>VolkDMA</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
+  
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -112,20 +88,27 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  
   <PropertyGroup Label="UserMacros" />
+  
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>$(ProjectName)Debug</TargetName>
   </PropertyGroup>
+  
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>$(ProjectName)Release</TargetName>
   </PropertyGroup>
+  
   <!-- Debug Configuration -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -142,6 +125,7 @@
       <AdditionalDependencies>$(ProjectDir)external\leechcore\leechcore.lib;$(ProjectDir)external\vmm\vmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
+  
   <!-- Release Configuration -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -160,5 +144,6 @@
       <AdditionalDependencies>$(ProjectDir)external\leechcore\leechcore.lib;$(ProjectDir)external\vmm\vmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
+  
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

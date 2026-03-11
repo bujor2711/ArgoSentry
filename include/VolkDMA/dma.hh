@@ -38,6 +38,9 @@ namespace VolkDMA {
     struct MemoryDiff;
     struct DiffConfig;
 
+    // Rate limiting (v2.3)
+    class RateLimiter;
+
     // Builder pattern (v2.2)
     class DMABuilder;
 }
@@ -82,7 +85,7 @@ public:
      */
     static DMABuilder Builder();
 
-    VolkHandle handle{};
+    VolkHandle handle;
 
     [[nodiscard]] DWORD get_process_id(const std::string& process_name) const;
     [[nodiscard]] std::vector<DWORD> get_process_id_list(const std::string& process_name) const;
@@ -168,6 +171,12 @@ public:
                                                      DWORD process_id, std::chrono::milliseconds interval);
     const MemoryDiffer& get_memory_differ() const;
 
+    // Rate limiting (v2.3)
+    void enable_rate_limiting(bool enable);
+    void set_rate_limit(size_t bytes_per_sec);
+    [[nodiscard]] bool is_rate_limiting_enabled() const;
+    [[nodiscard]] size_t get_rate_limit() const;
+
 private:
     bool dump_memory_map();
     bool clean_fpga();
@@ -189,6 +198,9 @@ private:
 
     // Memory differ
     std::unique_ptr<MemoryDiffer> memory_differ_;
+
+    // Rate limiter (v2.3)
+    std::unique_ptr<RateLimiter> rate_limiter_;
 };
 
 // Template implementations

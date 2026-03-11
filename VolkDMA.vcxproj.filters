@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="external">
+      <UniqueIdentifier>{8f51544e-4fad-4dc2-bc08-c15df1b210fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\leechcore">
+      <UniqueIdentifier>{ed810cf3-69fa-4252-8d73-3b066f3a593d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\vmm">
+      <UniqueIdentifier>{6203e5d7-a367-4e25-ab44-e4f2e75075c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{72b5aeb7-9ef2-4597-9394-e1042c19e6b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{58b92522-20e9-4c8e-8771-768765a333f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\VolkDMA">
+      <UniqueIdentifier>{cecd8df2-418d-4b62-b3ba-f7ca7fd671ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\VolkDMA\internal">
+      <UniqueIdentifier>{93caef52-fd09-4479-9c41-3e7f430dc11d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="external\leechcore\leechcore.h">
+      <Filter>external\leechcore</Filter>
+    </ClInclude>
+    <ClInclude Include="external\vmm\vmmdll.h">
+      <Filter>external\vmm</Filter>
+    </ClInclude>
+    <ClInclude Include="include\VolkDMA\dma.hh">
+      <Filter>include\VolkDMA</Filter>
+    </ClInclude>
+    <ClInclude Include="include\VolkDMA\inputstate.hh">
+      <Filter>include\VolkDMA</Filter>
+    </ClInclude>
+    <ClInclude Include="include\VolkDMA\process.hh">
+      <Filter>include\VolkDMA</Filter>
+    </ClInclude>
+    <ClInclude Include="include\VolkDMA\internal\volkresource.hh">
+      <Filter>include\VolkDMA\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="external\VolkLog\include\VolkLog\log.hh" />
+    <ClInclude Include="include\VolkDMA\validators.hh" />
+    <ClInclude Include="include\VolkDMA\metrics.hh" />
+    <ClInclude Include="include\VolkDMA\config.hh" />
+    <ClInclude Include="include\VolkDMA\cache.hh" />
+    <ClInclude Include="include\VolkDMA\memory_layout.hh" />
+    <ClInclude Include="include\VolkDMA\batch.hh" />
+    <ClInclude Include="include\VolkDMA\health.hh" />
+    <ClInclude Include="include\VolkDMA\dumper.hh" />
+    <ClInclude Include="include\VolkDMA\dma_internal.hh" />
+    <ClInclude Include="include\VolkDMA\async.hh" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="external\leechcore\leechcore.lib">
+      <Filter>external\leechcore</Filter>
+    </Library>
+    <Library Include="external\vmm\vmm.lib">
+      <Filter>external\vmm</Filter>
+    </Library>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\inputstate.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\process.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\validators.cpp" />
+    <ClCompile Include="src\metrics.cpp" />
+    <ClCompile Include="src\config.cpp" />
+    <ClCompile Include="src\cache.cpp" />
+    <ClCompile Include="src\memory_layout.cpp" />
+    <ClCompile Include="src\batch.cpp" />
+    <ClCompile Include="src\health_simple.cpp" />
+    <ClCompile Include="src\dma.cpp" />
+    <ClCompile Include="example\list_processes.cpp" />
+    <ClCompile Include="example\show_all_processes.cpp" />
+    <ClCompile Include="src\async.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ROADMAP.md" />
+    <None Include="CHANGELOG.md" />
+    <None Include="volkdma.ini" />
+    <None Include="docs\README.md" />
+    <None Include="docs\GETTING_STARTED.md" />
+    <None Include="docs\API_REFERENCE.md" />
+    <None Include="docs\EXAMPLES.md" />
+    <None Include="docs\FAQ.md" />
+    <None Include="docs\ARCHITECTURE.md" />
+    <None Include="example\build.bat" />
+    <None Include="example\QUICKSTART.md" />
+    <None Include="example\README.md" />
+    <None Include="example\SimpleTest.vcxproj" />
+    <None Include="example\TestDMA.vcxproj" />
+    <None Include="example\WHERE_IS_EXE.md" />
+    <None Include="example\x64\Release\run_as_admin.bat" />
+    <None Include="example\x64\Release\run_dma_test.ps1" />
+    <None Include="example\x64\Release\run_test_admin.ps1" />
+    <None Include="example\x64\Release\TROUBLESHOOTING.md" />
+    <None Include="README.md" />
+    <None Include="example\x64\Release\SUCCESS.md" />
+    <None Include="example\compile_process_lister.bat" />
+    <None Include="example\x64\Release\list_target_processes.ps1" />
+    <None Include="example\x64\Release\PROCESS_DISCOVERY_GUIDE.md" />
+    <None Include="example\x64\Release\TEST_DMA_READY.md" />
+    <None Include="example\x64\Release\WHY_PROCESSES_NOT_FOUND.md" />
+    <None Include="IMPLEMENTATION_COMPLETE.md" />
+    <None Include="LIBRARY_STATUS_2026.md" />
+  </ItemGroup>
+</Project>

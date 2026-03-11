@@ -11,6 +11,7 @@
 #include "VolkDMA/memory_layout.hh"
 #include "VolkDMA/differ.hh"
 #include "VolkDMA/builder.hh"  // v2.2 - Builder pattern
+#include "VolkDMA/rate_limiter.hh"  // v2.3 - Rate limiting
 
 #define NOMINMAX
 #include <Windows.h>
@@ -60,6 +61,7 @@ DMA::DMA(bool use_memory_map)
     memory_analyzer_ = std::make_unique<MemoryLayout::MemoryLayoutAnalyzer>();
     batch_ops_ = std::make_unique<BatchOperations>();
     memory_differ_ = std::make_unique<MemoryDiffer>();
+    rate_limiter_ = std::make_unique<RateLimiter>(0);  // v2.3: Disabled by default
 
     // Set VMM handle for batch operations
     batch_ops_->set_vmm_handle(handle.get());
@@ -220,31 +222,36 @@ T DMA::read(uint64_t address, DWORD process_id) const {
                   "T must be trivially copyable");
     static_assert(!std::is_pointer<T>::value, 
                   "T cannot be a pointer type");
-    
+
     // Validate inputs
     if (!Validation::ProcessValidator::is_valid_process_id(process_id)) {
         throw std::invalid_argument("Invalid process ID");
     }
-    
+
     if (!Validation::MemoryRangeValidator::is_safe_range(address, sizeof(T))) {
         throw std::invalid_argument("Invalid memory address or size");
     }
-    
+
+    // Apply rate limiting (v2.3)
+    if (rate_limiter_) {
+        rate_limiter_->wait_if_needed(sizeof(T));
+    }
+
     auto start = std::chrono::high_resolution_clock::now();
-    
+
     // Check cache first
     if (cache_) {
         auto cached = cache_->get(address, sizeof(T));
         if (cached && cached->size() >= sizeof(T)) {
             T value;
             std::memcpy(&value, cached->data(), sizeof(T));
-            
+
             auto end = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-            
+
             metrics_->record_read(sizeof(T), duration.count(), true);
             metrics_->record_cache_hit();
-            
+
             return value;
         }
         metrics_->record_cache_miss();
@@ -646,8 +653,35 @@ bool DMA::clean_fpga() {
         // Flush any pending operations
         VMMDLL_ConfigSet(handle.get(), VMMDLL_OPT_CORE_PRINTF_ENABLE, 0);
     }
-    
+
     return true;
+}
+
+//==============================================================================
+// Rate Limiting (v2.3)
+//==============================================================================
+void DMA::enable_rate_limiting(bool enable) {
+    if (enable && !rate_limiter_) {
+        rate_limiter_ = std::make_unique<RateLimiter>(0);  // Disabled by default
+    } else if (!enable) {
+        rate_limiter_.reset();
+    }
+}
+
+void DMA::set_rate_limit(size_t bytes_per_sec) {
+    if (!rate_limiter_) {
+        rate_limiter_ = std::make_unique<RateLimiter>(bytes_per_sec);
+    } else {
+        rate_limiter_->set_limit(bytes_per_sec);
+    }
+}
+
+bool DMA::is_rate_limiting_enabled() const {
+    return rate_limiter_ && rate_limiter_->is_enabled();
+}
+
+size_t DMA::get_rate_limit() const {
+    return rate_limiter_ ? rate_limiter_->get_limit() : 0;
 }
 
 } // namespace VolkDMA
