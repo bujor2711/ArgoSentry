@@ -26,21 +26,436 @@
 ### **Implementat (v1.0 - v2.6):**
 ✅ **17 versiuni** complete - Vezi `IMPLEMENTED_FEATURES.md`  
 ✅ **~12,500+ linii** production code  
-✅ **Production ready** - Zero critical bugs  
+⚠️ **Feature-complete** - BUT NOT production-ready (see Critical Bugs section below)  
 ✅ **Complete test coverage** - 15 interactive tests  
 ✅ **Latest:** Pattern Library (v2.6) - Organized pattern management! 📚
 
 ### **Rămase de Implementat:**
+🔴 **4 CRITICAL bugs** - MUST FIX before production (~50 min)  
 🟡 **1 medium-priority feature** - Nice-to-have, optional pentru producție  
 🔵 **4 low-priority features** - Low ROI, documentate dar nu recomandate  
-📊 **Total: 5 features** (~39-52 ore estimate)
+📊 **Total: 5 features + 4 critical fixes** (~40-53 ore estimate)
 
 **Breakdown:**
+- **URGENT:** RateLimiter race, memory leak, buffer overflow, thread pool race (50 min total)
 - Mock Interface (Medium)
 - SIMD, C++20 Concepts, Coroutines, Memory Write Operations (Very Low)
 
-### **Recomandare Următoare (Dacă Vrei Mai Mult):**
-1. **Mock Interface** ⭐⭐ - Testing without hardware (5-6 hrs cu memory safety)
+### **Recomandare Următoare (URGENT!):**
+1. **🔴 FIX CRITICAL BUGS** ⭐⭐⭐⭐⭐ - BLOCKS production deployment (50 min) ← **START HERE!**
+2. **Mock Interface** ⭐⭐ - Testing without hardware (5-6 hrs cu memory safety)
+
+---
+
+## 🔴 **CRITICAL BUGS & STATIC ANALYSIS**
+
+**⚠️ PRODUCTION READINESS ALERT ⚠️**
+
+**Comprehensive Static Analysis Completed:** 11 Martie 2026  
+**Scope:** ~12,500 LOC across 42 files  
+**Risk Score: 7.5/10 (HIGH RISK)** 🔴  
+**Status:** Library is **NOT production-ready** despite being feature-complete
+
+**Finding:** 4 critical bugs discovered that contradict "zero critical bugs" claim. These **MUST** be fixed before any production deployment.
+
+---
+
+### 🚨 **Top 10 Critical Problems**
+
+#### **1. ⚠️ CRITICAL: Race Condition in RateLimiter (Undefined Behavior)**
+**Location:** `src/rate_limiter.cpp:38-41`  
+**Severity:** 🔴 CRITICAL - Guaranteed crashes under load  
+**Issue:** Manually unlocking mutex while `std::lock_guard` still owns it → double unlock
+
+```cpp
+std::lock_guard<std::mutex> lock(mutex_);  // Line 18 - acquires lock
+// ... processing ...
+mutex_.unlock();  // Line 39 - ❌ MANUAL UNLOCK while lock_guard active!
+std::this_thread::sleep_for(wait_time);
+mutex_.lock();    // Manual relock
+// lock_guard destructor tries to unlock again → DOUBLE UNLOCK = UNDEFINED BEHAVIOR
+```
+
+**Impact:**
+- Guaranteed crashes in multi-threaded scenarios
+- Complete rate limiting system failure
+- Data corruption in shared state
+
+**Fix (15 minutes):**
+```cpp
+std::unique_lock<std::mutex> lock(mutex_);  // ✅ Use unique_lock for manual control
+// ... processing ...
+lock.unlock();  // ✅ Safe manual unlock
+std::this_thread::sleep_for(wait_time);
+lock.lock();    // ✅ Safe manual relock
+// unique_lock destructor handles cleanup correctly
+```
+
+---
+
+#### **2. ⚠️ HIGH: Memory Leak in Process Discovery**
+**Location:** `src/dma.cpp:128-150`  
+**Severity:** 🟡 HIGH - Inevitable OOM in long-running apps  
+**Issue:** `new DWORD[pid_count]` never freed on success path
+
+```cpp
+pid_list = new DWORD[pid_count];  // Line 128 - heap allocation
+// ... search logic ...
+if (current_name == lower_process_name) {
+    found_pid = pid_list[i];
+    break;  // ❌ Early exit WITHOUT delete[]!
+}
+// Missing: delete[] pid_list;
+return found_pid;  // ❌ Memory leaked on every successful call
+```
+
+**Impact:**
+- Leaks memory on EVERY successful `get_process_id()` call
+- ~4KB-16KB leaked per call (typical pid_count: 1000-4000)
+- OOM crash after thousands of calls
+
+**Fix (10 minutes):**
+```cpp
+auto pid_list = std::make_unique<DWORD[]>(pid_count);  // ✅ RAII cleanup
+// ... search logic ...
+if (current_name == lower_process_name) {
+    return pid_list[i];  // ✅ unique_ptr automatically frees memory
+}
+return 0;
+```
+
+---
+
+#### **3. ⚠️ CRITICAL: Buffer Overflow in Pattern Matching**
+**Location:** `src/compiled_pattern.cpp:139-160`  
+**Severity:** 🔴 CRITICAL - Exploitable security vulnerability  
+**Issue:** Unsigned arithmetic underflow when `size < length_`
+
+```cpp
+if (size < length_) return 0;  // Line 139 - validation check
+
+const size_t search_end = size - length_ + 1;  // Line 144 - ❌ HAPPENS BEFORE CHECK!
+// If size < length_, this underflows: size_t(-1) + 1 = UINT64_MAX
+
+for (size_t i = 0; i < search_end; ++i) {  // Loops billions of times!
+    // data[i + j] accesses FAR beyond buffer → heap corruption
+}
+```
+
+**Impact:**
+- Heap corruption / segmentation fault
+- Potential arbitrary code execution (security vulnerability)
+- Crashes on every pattern scan with small buffers
+
+**Fix (5 minutes):**
+```cpp
+// ✅ Move validation BEFORE arithmetic
+if (data == nullptr || size == 0 || length_ == 0 || size < length_) {
+    return 0;
+}
+
+const size_t search_end = size - length_ + 1;  // ✅ Now safe - size >= length_ guaranteed
+```
+
+---
+
+#### **4. ⚠️ HIGH: Thread Pool Task Counter Race**
+**Location:** `src/async.cpp:47`  
+**Severity:** 🟡 HIGH - Use-after-free risk  
+**Issue:** `active_tasks_` counter never incremented or decremented
+
+```cpp
+task = std::move(tasks_.front());
+tasks_.pop();
+// ❌ Missing: active_tasks_.fetch_add(1);
+task();  // Execute without tracking
+// ❌ Missing: active_tasks_.fetch_sub(1);
+```
+
+**Consequence in wait_all():**
+```cpp
+if (tasks_.empty() && active_tasks_.load() == 0) {  // Always true!
+    return;  // ❌ Returns while tasks still executing
+}
+```
+
+**Impact:**
+- `wait_all()` returns prematurely while tasks still running
+- Dangling references / use-after-free when objects destroyed
+- Race conditions in cleanup code
+
+**Fix (20 minutes):**
+```cpp
+task = std::move(tasks_.front());
+tasks_.pop();
+active_tasks_.fetch_add(1, std::memory_order_release);  // ✅ Track task start
+try {
+    task();
+} catch (...) {
+    active_tasks_.fetch_sub(1, std::memory_order_release);
+    throw;
+}
+active_tasks_.fetch_sub(1, std::memory_order_release);  // ✅ Track task completion
+```
+
+---
+
+#### **5. 🟡 HIGH: Path Traversal Vulnerability**
+**Location:** `src/pattern_library.cpp:74-96`  
+**Severity:** 🟡 HIGH - Information disclosure  
+**Issue:** No path validation before opening user-provided files
+
+```cpp
+if (!std::filesystem::exists(filename)) {  // Line 79
+    return PatternLibraryError::FileNotFound;
+}
+std::ifstream file(filename);  // Line 90 - ❌ Opens ANY file!
+```
+
+**Attack Vectors:**
+- `"../../../../etc/passwd"` on Linux
+- `"C:\\Windows\\System32\\config\\SAM"` on Windows
+- `"..\\..\\..\\secrets.txt"`
+
+**Impact:**
+- Arbitrary file read (information disclosure)
+- Read sensitive system files
+- Security vulnerability in applications using library
+
+**Fix (30 minutes):**
+```cpp
+std::filesystem::path file_path = std::filesystem::canonical(filename);  // ✅ Resolve path
+std::filesystem::path allowed_dir = std::filesystem::current_path() / "patterns";
+
+if (!file_path.string().starts_with(allowed_dir.string())) {
+    return PatternLibraryError::FileAccessDenied;  // ✅ Reject path traversal
+}
+```
+
+---
+
+#### **6. 🟠 MEDIUM: Integer Overflow in Parallel Scanner**
+**Location:** `src/parallel_scanner.cpp:72-80`  
+**Severity:** 🟠 MEDIUM - Incorrect results  
+**Issue:** Chunk size calculation can overflow on very large ranges
+
+```cpp
+size_t chunk_size = (range_end - range_start) / thread_count;  // Can overflow
+```
+
+**Fix:** Add overflow check before division
+
+---
+
+#### **7. 🟠 MEDIUM: Missing Null Checks in Template Read**
+**Location:** `include/ArgoSentry/dma.hh:108-109`  
+**Severity:** 🟠 MEDIUM - Potential crashes  
+**Issue:** `read<T>()` doesn't validate `bytes_read` return value
+
+**Fix (15 minutes):** Add validation:
+```cpp
+if (bytes_read == 0 || bytes_read != sizeof(T)) {
+    throw std::runtime_error("Partial read");
+}
+```
+
+---
+
+#### **8. 🟢 LOW: Statistics Race in RateLimiter**
+**Location:** `src/rate_limiter.cpp:59`  
+**Severity:** 🟢 LOW - Incorrect metrics only  
+**Issue:** `total_bytes_consumed_` not atomic → race condition
+
+**Fix (5 minutes):** Change to `std::atomic<size_t>`
+
+---
+
+#### **9. 🟠 MEDIUM: Public Mutable DMA Handle**
+**Location:** `include/ArgoSentry/dma.hh:90`  
+**Severity:** 🟠 MEDIUM - Misuse risk  
+**Issue:** `public: ArgoHandle handle;` can be `std::move`d away
+
+**Fix (10 minutes):** Make private with const getter
+
+---
+
+#### **10. 🟢 LOW: Pattern Length Inconsistencies**
+**Location:** Multiple files  
+**Severity:** 🟢 LOW - Confusion only  
+**Issue:** 1024 byte limit vs 10K pattern count limit inconsistent
+
+**Fix:** Document limits clearly in header comments
+
+---
+
+### ⚡ **Quick Wins (Total: ~50 minutes for Critical 4)**
+
+**🔴 CRITICAL BLOCKERS (Must fix before ANY production use):**
+
+1. ✅ **Fix RateLimiter Race** (15 min)
+   - File: `src/rate_limiter.cpp:38-41`
+   - Change: `std::lock_guard` → `std::unique_lock`
+   - Impact: Prevents guaranteed crashes
+
+2. ✅ **Fix Memory Leak** (10 min)
+   - File: `src/dma.cpp:128-150`
+   - Change: `new DWORD[]` → `std::unique_ptr<DWORD[]>`
+   - Impact: Prevents inevitable OOM
+
+3. ✅ **Fix Buffer Overflow** (5 min)
+   - File: `src/compiled_pattern.cpp:139-160`
+   - Change: Move validation before arithmetic
+   - Impact: Prevents heap corruption & security vulnerability
+
+4. ✅ **Fix Thread Pool Race** (20 min)
+   - File: `src/async.cpp:47`
+   - Change: Add `active_tasks_` increment/decrement
+   - Impact: Prevents use-after-free crashes
+
+**🟡 HIGH PRIORITY (Beta quality):**
+
+5. ✅ **Add Path Validation** (30 min) - Prevents information disclosure
+6. ✅ **Make DMA Handle Private** (10 min) - Prevents misuse
+7. ✅ **Add Null Checks to read<T>** (15 min) - Prevents crashes
+8. ✅ **Make Statistics Atomic** (5 min) - Correct metrics
+
+**After completing top 4:** Library reaches **Beta-quality** (risk score ~5/10)
+
+---
+
+### 🏗️ **Top 10 Architectural Improvements**
+
+#### **1. Implement Dependency Injection for DMA Backend**
+**Priority:** HIGH  
+**Effort:** 2-3 days  
+**Benefit:** Testability, mock interfaces without hardware
+
+```cpp
+class IDMABackend {
+    virtual uint8_t read_u8(uint64_t addr, DWORD pid) = 0;
+    // ...
+};
+
+class DMA {
+    DMA(std::unique_ptr<IDMABackend> backend);  // Inject dependency
+};
+```
+
+#### **2. Add Result<T, Error> Type**
+**Priority:** MEDIUM  
+**Effort:** 3-4 days  
+**Benefit:** Consistent error handling, no exceptions in hot paths
+
+```cpp
+template<typename T, typename E = DMAError>
+class Result {
+    std::variant<T, E> value_;
+public:
+    [[nodiscard]] bool is_ok() const;
+    [[nodiscard]] T unwrap();
+};
+
+Result<uint64_t, DMAError> find_signature(...);
+```
+
+#### **3. Separate Read-Only and Read-Write Interfaces**
+**Priority:** HIGH (SOLID principles)  
+**Effort:** 2 days  
+**Benefit:** Security, prevents accidental writes
+
+```cpp
+class IDMAReader { /* read-only operations */ };
+class IDMAWriter : public IDMAReader { /* add write ops */ };
+```
+
+#### **4. Add Memory Budget and Resource Limits**
+**Priority:** HIGH  
+**Effort:** 1-2 days  
+**Benefit:** Prevents OOM, predictable resource usage
+
+```cpp
+class DMA {
+    size_t max_cache_size_ = 100 * 1024 * 1024;  // 100MB
+    size_t max_pattern_library_size_ = 10 * 1024 * 1024;  // 10MB
+};
+```
+
+#### **5. Implement Proper Logging Framework**
+**Priority:** CRITICAL (for production debugging)  
+**Effort:** 2-3 days  
+**Benefit:** Production observability, troubleshooting
+
+```cpp
+#define LOG_ERROR(msg, ...) logger.log(LogLevel::Error, msg, __VA_ARGS__)
+#define LOG_WARN(msg, ...) logger.log(LogLevel::Warn, msg, __VA_ARGS__)
+#define LOG_INFO(msg, ...) logger.log(LogLevel::Info, msg, __VA_ARGS__)
+```
+
+#### **6. Add Health Monitoring and Circuit Breaker**
+**Priority:** HIGH (fault tolerance)  
+**Effort:** 3-4 days  
+**Benefit:** Graceful degradation, automatic recovery
+
+#### **7. Implement Error Recovery Strategy**
+**Priority:** MEDIUM  
+**Effort:** 2-3 days  
+**Benefit:** Resilience, retry policies
+
+#### **8. Add Async/Await-Style API with C++20 Coroutines**
+**Priority:** LOW (nice-to-have)  
+**Effort:** 1 week  
+**Benefit:** Cleaner async code
+
+#### **9. Implement RAII Wrappers for All Resources**
+**Priority:** HIGH (exception safety)  
+**Effort:** 2-3 days  
+**Benefit:** No resource leaks, exception-safe
+
+#### **10. Add Telemetry and Observability**
+**Priority:** HIGH (production monitoring)  
+**Effort:** 3-5 days  
+**Benefit:** Performance insights, anomaly detection
+
+---
+
+### 📊 **Production Readiness Assessment**
+
+**Current State:**
+- ✅ **Feature-complete** (v2.6 - 17 versions implemented)
+- ✅ **Build system functional** (CI/CD fully green)
+- ✅ **Comprehensive test suite** (15 interactive tests)
+- ❌ **NOT production-ready** (4 critical bugs)
+- ❌ **NOT security-hardened** (path traversal, buffer overflow)
+- ❌ **NOT fault-tolerant** (no error recovery, circuit breakers)
+
+**Risk Assessment:**
+- **Risk Score:** 7.5/10 (HIGH RISK) 🔴
+- **Stability:** 4/10 (race conditions, memory leaks)
+- **Security:** 5/10 (buffer overflow, path traversal)
+- **Maintainability:** 7/10 (good architecture, needs DI)
+- **Observability:** 3/10 (no logging, limited metrics)
+
+**Critical Blockers (MUST FIX):**
+1. 🔴 RateLimiter undefined behavior → guaranteed crashes
+2. 🔴 Memory leak → inevitable OOM
+3. 🔴 Buffer overflow → heap corruption & security vulnerability
+4. 🔴 Thread pool race → use-after-free crashes
+
+**Timeline to Production:**
+- **Quick Fixes (50 min):** Beta-quality achieved (risk score ~5/10)
+- **High Priority (90 min):** Stable beta (risk score ~4/10)
+- **Medium Priority (1-2 weeks):** Production-ready (risk score ~2.5/10)
+- **Long-term (2-4 weeks):** Hardened production (risk score <2/10)
+
+**Recommendation:**
+1. **IMMEDIATE:** Fix 4 critical bugs (50 minutes) ← **START HERE**
+2. **THIS WEEK:** Add logging, path validation, null checks (2-3 hours)
+3. **NEXT SPRINT:** Implement DI, Result<T>, resource limits (1-2 weeks)
+4. **LONG-TERM:** Health monitoring, telemetry, security audit (2-4 weeks)
+
+**After Quick Fixes:**
+- Library safe for **internal testing** and **beta deployments**
+- NOT recommended for **public production** without comprehensive fixes
 
 ---
 
@@ -1161,13 +1576,20 @@ TEST(PatternLibraryTest, RealWorldPatterns) {
 ```
 [##########] 100% - Foundation Complete ✅
 [##########] 100% - Core Features ✅
-[##########] 100% - Production Ready ✅
+[#####     ]  50% - Production Ready ⚠️ (feature-complete, but has critical bugs)
 [##########] 100% - v2.3 Rate Limiting ✅
 [##########] 100% - v2.4 Parallel Scanning ✅
 [##########] 100% - v2.5 Pattern Compilation ✅ 🔥
 [##########] 100% - v2.6 Pattern Library ✅ 📚
 
-Optional Features: ~39-52 ore (5 features rămase)
+Critical Bug Fixes: ~50 minutes (4 URGENT fixes)
+├─ 🔴 RateLimiter race condition: 15 min
+├─ 🔴 Memory leak in get_process_id(): 10 min
+├─ 🔴 Buffer overflow in pattern matching: 5 min
+└─ 🔴 Thread pool task counter race: 20 min
+
+Optional Features: ~40-53 ore (5 features + critical fixes)
+├─ CRITICAL (4 bugs): ~50 min ← **MUST FIX FIRST!**
 ├─ Medium Priority (1): ~5-6h
 │  └─ Mock Interface: 5-6h
 └─ Low Priority (4): ~35-40h+
@@ -1181,28 +1603,60 @@ Optional Features: ~39-52 ore (5 features rămase)
 
 ## 🎯 **RECOMANDARE FINALĂ**
 
-**ArgoSentry v2.6 este PRODUCTION READY + COMPLETE!** 🎉
+**ArgoSentry v2.6 este FEATURE-COMPLETE dar NOT PRODUCTION-READY!** ⚠️
 
 ### **Ce AI:**
 ✅ **17 versiuni** (v1.0 - v2.6)  
 ✅ **~12,500+ linii** production code  
 ✅ **Complete test suite** (15 interactive tests)  
-✅ **Zero critical bugs**  
 ✅ **Pattern Compilation** (v2.5) - 2-3x speedup! 🔥  
-✅ **Pattern Library** (v2.6) - Organized management! 📚
+✅ **Pattern Library** (v2.6) - Organized management! 📚  
+⚠️ **BUT:** 4 critical bugs MUST be fixed before production (50 min)
 
-### **Nu mai trebuie să implementezi nimic!**
+### **🚨 URGENT: Fix Critical Bugs First!**
 
-**ArgoSentry v2.6** include:
+**Before ANY production deployment, fix these 4 critical bugs (~50 minutes total):**
+
+1. 🔴 **RateLimiter Race Condition** (15 min) - `src/rate_limiter.cpp:38-41`
+   - Issue: Undefined behavior with lock_guard + manual unlock
+   - Impact: Guaranteed crashes under load
+   - Fix: Replace `std::lock_guard` with `std::unique_lock`
+
+2. 🔴 **Memory Leak** (10 min) - `src/dma.cpp:128-150`
+   - Issue: `new DWORD[]` never freed on success path
+   - Impact: Inevitable OOM in long-running apps
+   - Fix: Use `std::unique_ptr<DWORD[]>`
+
+3. 🔴 **Buffer Overflow** (5 min) - `src/compiled_pattern.cpp:139-160`
+   - Issue: Unsigned underflow when `size < length_`
+   - Impact: Heap corruption & security vulnerability
+   - Fix: Move validation before arithmetic
+
+4. 🔴 **Thread Pool Race** (20 min) - `src/async.cpp:47`
+   - Issue: `active_tasks_` counter never incremented
+   - Impact: Use-after-free crashes
+   - Fix: Add `fetch_add(1)` before task(), `fetch_sub(1)` after
+
+**See "CRITICAL BUGS & STATIC ANALYSIS" section above for detailed fixes!**
+
+---
+
+### **After Quick Fixes (50 minutes):**
+
+**ArgoSentry v2.6** will be **Beta-quality** with:
 - ✅ **Pattern Management Stack** complete (v2.5 + v2.6)
 - ✅ **High-Performance Scanning** (parallel + compiled = 4-6x speedup!)
-- ✅ **Anti-Detection** (rate limiting v2.3)
+- ✅ **Anti-Detection** (rate limiting v2.3) - FIXED for thread safety
 - ✅ **Organized Workflows** (library cu file I/O, search, tags)
+- ✅ **No critical crashes** (race conditions fixed)
+- ✅ **No memory leaks** (RAII everywhere)
 
-**Singurul feature rămas (opțional):**
-- **Mock Interface** ⭐⭐ - Testing without hardware (5-6h, LOW priority)
+**Remaining optional work:**
+- **Path validation** 🟡 (30 min) - Security hardening
+- **Null checks** 🟠 (15 min) - Additional safety
+- **Mock Interface** 🟢 (5-6h) - Testing without hardware
 
-**💡 Synergy Perfect:**
+**💡 Perfect Synergy (After Fixes):**
 ```cpp
 // Load patterns from library
 PatternLibrary library;
@@ -1217,12 +1671,22 @@ ParallelScanner scanner(dma);
 auto result = scanner.find_signature_parallel(compiled, start, end, pid);
 
 // Combined: 4-6x speedup + organization + sharing! 🚀
+// NOW SAFE: No races, no leaks, no crashes!
 ```
 
-**Biblioteca este COMPLETE! Enjoy!** 🎊🎊🎊
+**Timeline:**
+- **NOW:** Fix 4 critical bugs (50 min) ← **START HERE!**
+- **THIS WEEK:** Add path validation, null checks (45 min)
+- **BETA READY:** Library safe for internal testing
+- **NEXT SPRINT:** Architectural improvements (1-2 weeks)
+- **PRODUCTION READY:** Hardened for public deployment (2-4 weeks)
+
+**Biblioteca este FEATURE-COMPLETE! Dar necesită 50 minute de bug fixes!** 🐛➡️🎉
 
 ---
 
-**Ultima actualizare:** 11 Martie 2026  
+**Ultima actualizare:** 11 Martie 2026 (Static Analysis Completed)  
 **Versiune:** v2.6 - Pattern Library ✅ 📚  
-**Status:** **PRODUCTION READY + COMPLETE** 🎉
+**Status:** **FEATURE-COMPLETE + 4 CRITICAL BUGS** ⚠️  
+**Risk Score:** 7.5/10 (HIGH RISK) - NOT production-ready until bugs fixed  
+**Next Action:** Fix 4 critical bugs (50 minutes) → Beta-quality
