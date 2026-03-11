@@ -15,7 +15,7 @@ void RateLimiter::wait_if_needed(size_t bytes) {
         return;
     }
 
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);  // ✅ Use unique_lock for manual control
 
     // Check if we need to reset the time window
     check_and_reset_window();
@@ -30,15 +30,15 @@ void RateLimiter::wait_if_needed(size_t bytes) {
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             now - last_reset_
         );
-        
+
         auto wait_time = std::chrono::seconds(1) - elapsed;
 
         // Only wait if we're still in the same second
         if (wait_time.count() > 0) {
             // Release mutex during sleep to avoid blocking other threads
-            mutex_.unlock();
+            lock.unlock();  // ✅ Safe manual unlock with unique_lock
             std::this_thread::sleep_for(wait_time);
-            mutex_.lock();
+            lock.lock();    // ✅ Safe manual relock with unique_lock
 
             // Reset after waiting
             bytes_consumed_.store(0, std::memory_order_relaxed);

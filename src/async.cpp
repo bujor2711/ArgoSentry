@@ -22,29 +22,41 @@ DMAThreadPool::DMAThreadPool(size_t thread_count)
         thread_count = std::thread::hardware_concurrency();
         if (thread_count == 0) thread_count = 4; // Fallback
     }
-    
+
     workers_.reserve(thread_count);
-    
+
     for (size_t i = 0; i < thread_count; ++i) {
         workers_.emplace_back([this] {
             while (true) {
                 std::function<void()> task;
-                
+
                 {
                     std::unique_lock<std::mutex> lock(queue_mutex_);
                     condition_.wait(lock, [this] {
                         return stop_.load() || !tasks_.empty();
                     });
-                    
+
                     if (stop_.load() && tasks_.empty()) {
                         return;
                     }
-                    
+
                     task = std::move(tasks_.front());
                     tasks_.pop();
                 }
-                
-                task();
+
+                // ✅ Track task execution - increment before running
+                active_tasks_.fetch_add(1, std::memory_order_release);
+
+                try {
+                    task();  // Execute task
+                } catch (...) {
+                    // ✅ Decrement even on exception to maintain accurate count
+                    active_tasks_.fetch_sub(1, std::memory_order_release);
+                    throw;  // Re-throw exception after cleanup
+                }
+
+                // ✅ Task completed successfully - decrement counter
+                active_tasks_.fetch_sub(1, std::memory_order_release);
             }
         });
     }

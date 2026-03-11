@@ -113,7 +113,6 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
 
     // Get process ID list
     SIZE_T pid_count = 0;
-    DWORD* pid_list = nullptr;
 
     if (!VMMDLL_PidList(handle.get(), nullptr, &pid_count)) {
         metrics_->record_process_lookup(false);
@@ -125,11 +124,11 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
         return 0;
     }
 
-    pid_list = new DWORD[pid_count];
-    if (!VMMDLL_PidList(handle.get(), pid_list, &pid_count)) {
-        delete[] pid_list;
+    // ✅ Use unique_ptr for automatic cleanup (RAII)
+    auto pid_list = std::make_unique<DWORD[]>(pid_count);
+    if (!VMMDLL_PidList(handle.get(), pid_list.get(), &pid_count)) {
         metrics_->record_process_lookup(false);
-        return 0;
+        return 0;  // ✅ unique_ptr automatically frees memory
     }
 
     // Search for process
@@ -151,12 +150,12 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
 
             if (current_name == lower_process_name) {
                 found_pid = pid_list[i];
-                break;
+                break;  // ✅ unique_ptr will cleanup automatically
             }
         }
     }
 
-    delete[] pid_list;
+    // ✅ No manual delete[] needed - RAII handles it
 
     metrics_->record_process_lookup(found_pid != 0);
 
@@ -168,30 +167,29 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
 //==============================================================================
 std::vector<DWORD> DMA::get_process_id_list(const std::string& process_name) const {
     std::vector<DWORD> result;
-    
+
     if (process_name.empty()) {
         return result;
     }
-    
+
     // Get all PIDs
     SIZE_T pid_count = 0;
-    DWORD* pid_list = nullptr;
 
     if (!VMMDLL_PidList(handle.get(), nullptr, &pid_count)) {
         return result;
     }
 
-    pid_list = new DWORD[pid_count];
-    if (!VMMDLL_PidList(handle.get(), pid_list, &pid_count)) {
-        delete[] pid_list;
-        return result;
+    // ✅ Use unique_ptr for automatic cleanup (RAII)
+    auto pid_list = std::make_unique<DWORD[]>(pid_count);
+    if (!VMMDLL_PidList(handle.get(), pid_list.get(), &pid_count)) {
+        return result;  // ✅ unique_ptr automatically frees memory
     }
-    
+
     // Find all matching processes
     std::string lower_process_name = process_name;
     std::transform(lower_process_name.begin(), lower_process_name.end(), 
                    lower_process_name.begin(), ::tolower);
-    
+
     for (DWORD i = 0; i < pid_count; ++i) {
         VMMDLL_PROCESS_INFORMATION proc_info = {};
         proc_info.magic = VMMDLL_PROCESS_INFORMATION_MAGIC;
@@ -208,9 +206,9 @@ std::vector<DWORD> DMA::get_process_id_list(const std::string& process_name) con
             }
         }
     }
-    
-    delete[] pid_list;
-    
+
+    // ✅ No manual delete[] needed - RAII handles it
+
     return result;
 }
 

@@ -131,16 +131,17 @@ uint64_t CompiledPattern::find_in_buffer(
     size_t size, 
     uint64_t base_addr
 ) const {
-    // Validate inputs
+    // Validate inputs - MUST be done BEFORE any arithmetic
     if (!data || size == 0 || length_ == 0) {
         return 0;
     }
 
+    // ✅ Prevent unsigned underflow: Check size >= length_ before arithmetic
     if (size < length_) {
         return 0;  // Buffer too small
     }
 
-    // Calculate search range
+    // Calculate search range (safe now - size >= length_ guaranteed)
     const size_t search_end = size - length_ + 1;
 
     // Fast scanning with mask
