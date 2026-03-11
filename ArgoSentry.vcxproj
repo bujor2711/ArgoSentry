@@ -137,6 +137,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir);$(ProjectDir)external\VolkLog\include;$(ProjectDir)external\vmm;$(ProjectDir)external\leechcore;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <DisableSpecificWarnings>4200</DisableSpecificWarnings>
     </ClCompile>
     <Lib>
       <AdditionalDependencies>$(ProjectDir)external\leechcore\leechcore.lib;$(ProjectDir)external\vmm\vmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -155,6 +156,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir);$(ProjectDir)external\VolkLog\include;$(ProjectDir)external\vmm;$(ProjectDir)external\leechcore;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <DisableSpecificWarnings>4200</DisableSpecificWarnings>
     </ClCompile>
     <Lib>
       <AdditionalDependencies>$(ProjectDir)external\leechcore\leechcore.lib;$(ProjectDir)external\vmm\vmm.lib;%(AdditionalDependencies)</AdditionalDependencies>

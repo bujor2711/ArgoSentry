@@ -160,8 +160,8 @@ std::future<uint64_t> find_signature_async_with_progress(
             // Check if we should update progress
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update).count();
-            
-            if (elapsed >= update_interval_ms) {
+
+            if (elapsed >= static_cast<int64_t>(update_interval_ms)) {
                 callback(processed, total_size, "Scanning...");
                 last_update = now;
             }

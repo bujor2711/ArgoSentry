@@ -294,7 +294,7 @@ bool Process::fix_cr3(const std::string& process_name) {
     const size_t buffer_size = cb_size;
     std::unique_ptr<BYTE[]> bytes(new BYTE[buffer_size]);
     DWORD j = 0;
-    auto nt = VMMDLL_VfsReadW(this->dma.handle.get(), (LPWSTR)L"\\misc\\procinfo\\dtb.txt", bytes.get(), buffer_size - 1, &j, 0);
+    auto nt = VMMDLL_VfsReadW(this->dma.handle.get(), (LPWSTR)L"\\misc\\procinfo\\dtb.txt", bytes.get(), static_cast<DWORD>(buffer_size - 1), &j, 0);
     if (nt != VMMDLL_STATUS_SUCCESS)
         return false;
 
@@ -367,7 +367,7 @@ bool Process::read(uint64_t address, void* buffer, size_t size) const {
     }
 
     DWORD read_size = 0;
-    if (!VMMDLL_MemReadEx(this->dma.handle.get(), this->process_id, address, static_cast<PBYTE>(buffer), size, &read_size, VMMDLL_FLAG_NOCACHE)) {
+    if (!VMMDLL_MemReadEx(this->dma.handle.get(), this->process_id, address, static_cast<PBYTE>(buffer), static_cast<DWORD>(size), &read_size, VMMDLL_FLAG_NOCACHE)) {
         logger.error("Failed to read memory at 0x{:x} (PID: {}).", address, this->process_id);
         return false;
     }
@@ -390,7 +390,7 @@ bool Process::write(uint64_t address, void* buffer, size_t size, DWORD process_i
 
     DWORD target_process_id = (process_id == 0) ? this->process_id : process_id;
 
-    if (!VMMDLL_MemWrite(this->dma.handle.get(), target_process_id, address, static_cast<PBYTE>(buffer), size)) {
+    if (!VMMDLL_MemWrite(this->dma.handle.get(), target_process_id, address, static_cast<PBYTE>(buffer), static_cast<DWORD>(size))) {
         logger.error("Failed to write memory at 0x{:x} (PID: {}).", address, target_process_id);
         return false;
     }
@@ -419,7 +419,7 @@ bool Process::add_read_scatter(VMMDLL_SCATTER_HANDLE scatter_handle, uint64_t ad
         return false;
     }
 
-    if (!VMMDLL_Scatter_PrepareEx(scatter_handle, address, size, static_cast<PBYTE>(buffer), NULL)) {
+    if (!VMMDLL_Scatter_PrepareEx(scatter_handle, address, static_cast<DWORD>(size), static_cast<PBYTE>(buffer), NULL)) {
         logger.error("Failed to prepare scatter read at 0x{:x}.", address);
         return false;
     }
@@ -433,7 +433,7 @@ bool Process::add_write_scatter(VMMDLL_SCATTER_HANDLE scatter_handle, uint64_t a
         return false;
     }
 
-    if (!VMMDLL_Scatter_PrepareWrite(scatter_handle, address, static_cast<PBYTE>(buffer), size)) {
+    if (!VMMDLL_Scatter_PrepareWrite(scatter_handle, address, static_cast<PBYTE>(buffer), static_cast<DWORD>(size))) {
         logger.error("Failed to prepare scatter write at 0x{:x}.", address);
         return false;
     }

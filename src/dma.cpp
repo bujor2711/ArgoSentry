@@ -387,7 +387,7 @@ uint64_t DMA::find_signature(const char* signature, uint64_t range_start,
             process_id,
             current_address,
             buffer.data(),
-            read_size,
+            static_cast<DWORD>(read_size),
             &bytes_read,
             VMMDLL_FLAG_NOCACHE | VMMDLL_FLAG_ZEROPAD_ON_FAIL
         );
