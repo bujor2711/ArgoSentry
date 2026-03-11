@@ -75,19 +75,45 @@ PatternLibraryError PatternLibrary::load_from_file(const std::string& filename) 
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     try {
-        // Check file exists
-        if (!std::filesystem::exists(filename)) {
+        // ✅ Path traversal protection: Resolve canonical path
+        std::filesystem::path file_path;
+        try {
+            file_path = std::filesystem::canonical(filename);
+        } catch (const std::filesystem::filesystem_error&) {
+            // File doesn't exist or cannot be resolved
+            return PatternLibraryError::FileNotFound;
+        }
+
+        // ✅ Restrict to allowed directories (patterns/ subdirectory or current directory)
+        std::filesystem::path current_dir = std::filesystem::current_path();
+        std::filesystem::path allowed_dir = current_dir / "patterns";
+
+        std::string file_str = file_path.string();
+        std::string current_str = current_dir.string();
+        std::string allowed_str = allowed_dir.string();
+
+        // Allow files in current directory or patterns/ subdirectory
+        bool in_current = file_str.find(current_str) == 0;
+        bool in_patterns = file_str.find(allowed_str) == 0;
+
+        if (!in_current && !in_patterns) {
+            // ✅ Reject path traversal attempts
+            return PatternLibraryError::FileAccessDenied;
+        }
+
+        // Check file exists (redundant but for clarity)
+        if (!std::filesystem::exists(file_path)) {
             return PatternLibraryError::FileNotFound;
         }
 
         // Check file size
-        auto file_size = std::filesystem::file_size(filename);
+        auto file_size = std::filesystem::file_size(file_path);
         if (file_size > MAX_FILE_SIZE) {
             return PatternLibraryError::FileTooLarge;
         }
 
-        // Read file
-        std::ifstream file(filename);
+        // Read file (using validated canonical path)
+        std::ifstream file(file_path);
         if (!file.is_open()) {
             return PatternLibraryError::FileAccessDenied;
         }
@@ -170,7 +196,41 @@ PatternLibraryError PatternLibrary::save_to_file(const std::string& filename) co
     std::shared_lock<std::shared_mutex> lock(mutex_);
 
     try {
-        std::ofstream file(filename);
+        // ✅ Path traversal protection: Validate output path
+        std::filesystem::path file_path;
+        std::filesystem::path parent_path;
+
+        try {
+            file_path = std::filesystem::absolute(filename);
+            parent_path = file_path.parent_path();
+
+            // Create parent directory if it doesn't exist
+            if (!std::filesystem::exists(parent_path)) {
+                std::filesystem::create_directories(parent_path);
+            }
+        } catch (const std::filesystem::filesystem_error&) {
+            return PatternLibraryError::FileAccessDenied;
+        }
+
+        // ✅ Restrict to allowed directories
+        std::filesystem::path current_dir = std::filesystem::current_path();
+        std::filesystem::path allowed_dir = current_dir / "patterns";
+
+        std::string file_str = file_path.string();
+        std::string current_str = current_dir.string();
+        std::string allowed_str = allowed_dir.string();
+
+        // Allow files in current directory or patterns/ subdirectory
+        bool in_current = file_str.find(current_str) == 0;
+        bool in_patterns = file_str.find(allowed_str) == 0;
+
+        if (!in_current && !in_patterns) {
+            // ✅ Reject path traversal attempts
+            return PatternLibraryError::FileAccessDenied;
+        }
+
+        // Write file (using validated path)
+        std::ofstream file(file_path);
         if (!file.is_open()) {
             return PatternLibraryError::FileAccessDenied;
         }

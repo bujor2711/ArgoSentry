@@ -44,9 +44,12 @@ void RateLimiter::wait_if_needed(size_t bytes) {
             bytes_consumed_.store(0, std::memory_order_relaxed);
             last_reset_ = std::chrono::steady_clock::now();
 
-            // Update statistics
-            total_waits_++;
-            total_wait_time_ += std::chrono::duration_cast<std::chrono::milliseconds>(wait_time);
+            // ✅ Update atomic statistics (thread-safe)
+            total_waits_.fetch_add(1, std::memory_order_relaxed);
+            total_wait_time_ms_.fetch_add(
+                std::chrono::duration_cast<std::chrono::milliseconds>(wait_time).count(),
+                std::memory_order_relaxed
+            );
         } else {
             // Time window already passed, just reset
             bytes_consumed_.store(0, std::memory_order_relaxed);
@@ -56,7 +59,7 @@ void RateLimiter::wait_if_needed(size_t bytes) {
 
     // Consume bytes
     bytes_consumed_.fetch_add(bytes, std::memory_order_relaxed);
-    total_bytes_consumed_ += bytes;
+    total_bytes_consumed_.fetch_add(bytes, std::memory_order_relaxed);  // ✅ Atomic increment
 }
 
 bool RateLimiter::is_enabled() const noexcept {
@@ -87,11 +90,11 @@ void RateLimiter::reset() {
 }
 
 RateLimiter::Stats RateLimiter::get_stats() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    // ✅ Read atomic statistics (no mutex needed - lock-free)
     return Stats{
-        total_bytes_consumed_,
-        total_waits_,
-        total_wait_time_
+        total_bytes_consumed_.load(std::memory_order_relaxed),
+        total_waits_.load(std::memory_order_relaxed),
+        std::chrono::milliseconds(total_wait_time_ms_.load(std::memory_order_relaxed))
     };
 }
 

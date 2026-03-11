@@ -33,7 +33,7 @@ namespace ArgoSentry {
 // Constructor - Initialize DMA with FPGA hardware
 //==============================================================================
 DMA::DMA(bool use_memory_map)
-    : handle(nullptr, vmm_close)
+    : handle_(nullptr, vmm_close)  // ✅ Initialize private handle_
 {
     // Initialize VMM with FPGA device
     LPCSTR args[] = {
@@ -54,7 +54,7 @@ DMA::DMA(bool use_memory_map)
     }
     
     // Transfer ownership to unique_ptr
-    handle.reset(vmm_handle);
+    handle_.reset(vmm_handle);
     
     // Initialize all subsystems
     metrics_ = std::make_unique<Metrics::MetricsCollector>();
@@ -65,7 +65,7 @@ DMA::DMA(bool use_memory_map)
     rate_limiter_ = std::make_unique<RateLimiter>(0);  // v2.3: Disabled by default
 
     // Set VMM handle for batch operations
-    batch_ops_->set_vmm_handle(handle.get());
+    batch_ops_->set_vmm_handle(handle_.get());
 
     // Health monitoring is optional, not initialized by default
     health_monitor_ = nullptr;
@@ -114,7 +114,7 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
     // Get process ID list
     SIZE_T pid_count = 0;
 
-    if (!VMMDLL_PidList(handle.get(), nullptr, &pid_count)) {
+    if (!VMMDLL_PidList(handle_.get(), nullptr, &pid_count)) {
         metrics_->record_process_lookup(false);
         return 0;
     }
@@ -126,7 +126,7 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
 
     // ✅ Use unique_ptr for automatic cleanup (RAII)
     auto pid_list = std::make_unique<DWORD[]>(pid_count);
-    if (!VMMDLL_PidList(handle.get(), pid_list.get(), &pid_count)) {
+    if (!VMMDLL_PidList(handle_.get(), pid_list.get(), &pid_count)) {
         metrics_->record_process_lookup(false);
         return 0;  // ✅ unique_ptr automatically frees memory
     }
@@ -143,7 +143,7 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
         proc_info.wVersion = VMMDLL_PROCESS_INFORMATION_VERSION;
 
         SIZE_T cb_process_info = sizeof(VMMDLL_PROCESS_INFORMATION);
-        if (VMMDLL_ProcessGetInformation(handle.get(), pid_list[i], &proc_info, &cb_process_info)) {
+        if (VMMDLL_ProcessGetInformation(handle_.get(), pid_list[i], &proc_info, &cb_process_info)) {
             std::string current_name = proc_info.szName;
             std::transform(current_name.begin(), current_name.end(), 
                            current_name.begin(), ::tolower);
@@ -175,13 +175,13 @@ std::vector<DWORD> DMA::get_process_id_list(const std::string& process_name) con
     // Get all PIDs
     SIZE_T pid_count = 0;
 
-    if (!VMMDLL_PidList(handle.get(), nullptr, &pid_count)) {
+    if (!VMMDLL_PidList(handle_.get(), nullptr, &pid_count)) {
         return result;
     }
 
     // ✅ Use unique_ptr for automatic cleanup (RAII)
     auto pid_list = std::make_unique<DWORD[]>(pid_count);
-    if (!VMMDLL_PidList(handle.get(), pid_list.get(), &pid_count)) {
+    if (!VMMDLL_PidList(handle_.get(), pid_list.get(), &pid_count)) {
         return result;  // ✅ unique_ptr automatically frees memory
     }
 
@@ -196,7 +196,7 @@ std::vector<DWORD> DMA::get_process_id_list(const std::string& process_name) con
         proc_info.wVersion = VMMDLL_PROCESS_INFORMATION_VERSION;
 
         SIZE_T cb_process_info = sizeof(VMMDLL_PROCESS_INFORMATION);
-        if (VMMDLL_ProcessGetInformation(handle.get(), pid_list[i], &proc_info, &cb_process_info)) {
+        if (VMMDLL_ProcessGetInformation(handle_.get(), pid_list[i], &proc_info, &cb_process_info)) {
             std::string current_name = proc_info.szName;
             std::transform(current_name.begin(), current_name.end(), 
                            current_name.begin(), ::tolower);
@@ -261,7 +261,7 @@ T DMA::read(uint64_t address, DWORD process_id) const {
     DWORD bytes_read = 0;
     
     BOOL success = VMMDLL_MemReadEx(
-        handle.get(),
+        handle_.get(),
         process_id,
         address,
         reinterpret_cast<PBYTE>(&value),
@@ -272,11 +272,26 @@ T DMA::read(uint64_t address, DWORD process_id) const {
     
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    
-    if (!success || bytes_read != sizeof(T)) {
+
+    // ✅ Explicit null/partial read checks for safety
+    if (!success) {
         metrics_->record_read(bytes_read, duration.count(), false);
         throw std::runtime_error("DMA read failed at address 0x" + 
-                                 std::to_string(address));
+                                 std::to_string(address) + " - VMMDLL_MemReadEx returned failure");
+    }
+
+    if (bytes_read == 0) {
+        metrics_->record_read(0, duration.count(), false);
+        throw std::runtime_error("DMA read returned zero bytes at address 0x" + 
+                                 std::to_string(address) + " - possible invalid address or permissions");
+    }
+
+    if (bytes_read != sizeof(T)) {
+        metrics_->record_read(bytes_read, duration.count(), false);
+        throw std::runtime_error("Partial DMA read at address 0x" + 
+                                 std::to_string(address) + 
+                                 " - expected " + std::to_string(sizeof(T)) + 
+                                 " bytes, got " + std::to_string(bytes_read));
     }
     
     // Store in cache
@@ -382,7 +397,7 @@ uint64_t DMA::find_signature(const char* signature, uint64_t range_start,
         
         DWORD bytes_read = 0;
         BOOL success = VMMDLL_MemReadEx(
-            handle.get(),
+            handle_.get(),
             process_id,
             current_address,
             buffer.data(),
@@ -674,22 +689,22 @@ const MemoryLayout::MemoryLayoutAnalyzer& DMA::get_memory_analyzer() const {
 // Private Helper Methods
 //==============================================================================
 bool DMA::dump_memory_map() {
-    if (!handle) {
+    if (!handle_) {
         return false;
     }
     
     // Configure memory map (optional optimization)
     // This loads the memory map into MemProcFS for faster access
-    VMMDLL_ConfigSet(handle.get(), VMMDLL_OPT_CONFIG_IS_REFRESH_ENABLED, 1);
+    VMMDLL_ConfigSet(handle_.get(), VMMDLL_OPT_CONFIG_IS_REFRESH_ENABLED, 1);
     
     return true;
 }
 
 bool DMA::clean_fpga() {
     // Cleanup operations before shutdown
-    if (handle) {
+    if (handle_) {
         // Flush any pending operations
-        VMMDLL_ConfigSet(handle.get(), VMMDLL_OPT_CORE_PRINTF_ENABLE, 0);
+        VMMDLL_ConfigSet(handle_.get(), VMMDLL_OPT_CORE_PRINTF_ENABLE, 0);
     }
 
     return true;

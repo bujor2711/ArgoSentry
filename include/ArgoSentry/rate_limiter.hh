@@ -107,10 +107,10 @@ private:
     std::chrono::steady_clock::time_point last_reset_;  ///< Last window reset time
     size_t bytes_per_second_limit_;                     ///< Rate limit (0 = unlimited)
 
-    // Statistics (protected by mutex_)
-    size_t total_bytes_consumed_{0};
-    size_t total_waits_{0};
-    std::chrono::milliseconds total_wait_time_{0};
+    // ✅ Statistics - now atomic for thread-safe access
+    std::atomic<size_t> total_bytes_consumed_{0};       ///< Total bytes consumed (all-time)
+    std::atomic<size_t> total_waits_{0};                ///< Total number of waits
+    std::atomic<uint64_t> total_wait_time_ms_{0};       ///< Total wait time in milliseconds
 
     /**
      * @brief Check and reset window if needed
