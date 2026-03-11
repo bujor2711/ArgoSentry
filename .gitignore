@@ -49,6 +49,15 @@ Generated\ Files/
 TestResult.xml
 nunit-*.xml
 
+# ArgoSentry - Temporary files
+commit_msg_*.txt
+release_*.txt
+GITHUB_RELEASE_INSTRUCTIONS.md
+
+# ArgoSentry - Release artifacts (build locally, don't commit)
+*-Release.zip
+*-Release/
+
 # Build Results of an ATL Project
 [Dd]ebugPS/
 [Rr]eleasePS/
