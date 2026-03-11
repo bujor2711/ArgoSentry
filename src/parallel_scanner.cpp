@@ -206,6 +206,129 @@ std::future<ScanResult> ParallelScanner::find_signature_async(
     );
 }
 
+// Overload for CompiledPattern (v2.5 - combines compiled + parallel benefits)
+ScanResult ParallelScanner::find_signature_parallel(
+    const CompiledPattern& pattern,
+    uint64_t range_start,
+    uint64_t range_end,
+    DWORD process_id,
+    size_t num_threads
+)
+{
+    try {
+        // Reset cancellation flag
+        reset_cancel();
+
+        // Determine actual thread count
+        size_t actual_threads = (num_threads == 0) ? thread_count_ : num_threads;
+
+        // For small ranges, fallback to single-threaded compiled pattern scan
+        constexpr uint64_t MIN_PARALLEL_RANGE = 4096; // 4KB
+        if (range_end - range_start < MIN_PARALLEL_RANGE * actual_threads) {
+            uint64_t addr = dma_.find_signature(pattern, range_start, range_end, process_id);
+            return ScanResult{addr, {}, ""};
+        }
+
+        // Split range into chunks (one per thread)
+        uint64_t range_size = range_end - range_start;
+        uint64_t chunk_size = range_size / actual_threads;
+
+        // Launch worker threads
+        std::vector<std::future<ScanResult>> futures;
+        futures.reserve(actual_threads);
+
+        for (size_t i = 0; i < actual_threads; ++i) {
+            uint64_t chunk_start = range_start + (i * chunk_size);
+            uint64_t chunk_end = (i == actual_threads - 1) ? range_end : (chunk_start + chunk_size);
+
+            futures.push_back(std::async(std::launch::async,
+                [this, pattern, chunk_start, chunk_end, process_id]() -> ScanResult {
+                    try {
+                        // Check cancellation before scanning
+                        if (cancel_flag_.load(std::memory_order_relaxed)) {
+                            return ScanResult{0, {}, ""};
+                        }
+
+                        // Use DMA's compiled pattern scan
+                        uint64_t addr = dma_.find_signature(pattern, chunk_start, chunk_end, process_id);
+                        return ScanResult{addr, {}, ""};
+
+                    } catch (const std::exception& e) {
+                        return ScanResult{
+                            std::nullopt,
+                            std::make_error_code(std::errc::io_error),
+                            std::string("Worker error: ") + e.what()
+                        };
+                    } catch (...) {
+                        return ScanResult{
+                            std::nullopt,
+                            std::make_error_code(std::errc::io_error),
+                            "Unknown error in worker thread"
+                        };
+                    }
+                }
+            ));
+        }
+
+        // Collect results - return first match found
+        for (auto& future : futures) {
+            try {
+                ScanResult result = future.get();
+
+                // If error occurred, propagate it
+                if (!result.success()) {
+                    return result;
+                }
+
+                // If pattern found, cancel other threads and return immediately
+                if (result.found()) {
+                    cancel_flag_.store(true, std::memory_order_relaxed);
+                    return result;
+                }
+
+            } catch (const std::exception& e) {
+                return ScanResult{
+                    std::nullopt,
+                    std::make_error_code(std::errc::io_error),
+                    std::string("Failed to get worker result: ") + e.what()
+                };
+            }
+        }
+
+        // Pattern not found in any chunk
+        return ScanResult{0, {}, ""};
+
+    } catch (const std::bad_alloc&) {
+        return ScanResult{
+            std::nullopt,
+            std::make_error_code(std::errc::not_enough_memory),
+            "Memory allocation failed for parallel scan"
+        };
+    } catch (const std::exception& e) {
+        return ScanResult{
+            std::nullopt,
+            std::make_error_code(std::errc::io_error),
+            std::string("Parallel scan error: ") + e.what()
+        };
+    }
+}
+
+// Async version with CompiledPattern (v2.5)
+std::future<ScanResult> ParallelScanner::find_signature_async(
+    const CompiledPattern& pattern,
+    uint64_t range_start,
+    uint64_t range_end,
+    DWORD process_id
+)
+{
+    // Launch the parallel scan asynchronously with compiled pattern
+    return std::async(std::launch::async,
+        [this, pattern, range_start, range_end, process_id]() -> ScanResult {
+            return find_signature_parallel(pattern, range_start, range_end, process_id);
+        }
+    );
+}
+
 void ParallelScanner::cancel()
 {
     cancel_flag_.store(true, std::memory_order_relaxed);

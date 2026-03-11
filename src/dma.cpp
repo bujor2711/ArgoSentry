@@ -429,7 +429,67 @@ uint64_t DMA::find_signature(const char* signature, uint64_t range_start,
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     
     metrics_->record_scan(total_scanned, duration.count(), found_address != 0);
-    
+
+    return found_address;
+}
+
+// Overload for CompiledPattern (v2.5 - 2-3x faster)
+uint64_t DMA::find_signature(const CompiledPattern& pattern, uint64_t range_start, 
+                              uint64_t range_end, DWORD process_id) const {
+    if (range_start >= range_end) {
+        throw std::invalid_argument("Invalid range: start >= end");
+    }
+
+    if (!Validation::ProcessValidator::is_valid_process_id(process_id)) {
+        throw std::invalid_argument("Invalid process ID");
+    }
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    // Scan memory in chunks
+    constexpr size_t chunk_size = 4096; // 4KB chunks
+    std::vector<uint8_t> buffer(chunk_size);
+
+    uint64_t current_address = range_start;
+    uint64_t total_scanned = 0;
+    uint64_t found_address = 0;
+
+    while (current_address < range_end) {
+        size_t read_size = static_cast<size_t>(
+            (chunk_size < static_cast<size_t>(range_end - current_address)) ? 
+            chunk_size : static_cast<size_t>(range_end - current_address)
+        );
+
+        DWORD bytes_read = 0;
+        BOOL success = VMMDLL_MemReadEx(
+            handle_.get(),
+            process_id,
+            current_address,
+            buffer.data(),
+            static_cast<DWORD>(read_size),
+            &bytes_read,
+            VMMDLL_FLAG_NOCACHE | VMMDLL_FLAG_ZEROPAD_ON_FAIL
+        );
+
+        if (success && bytes_read > 0) {
+            total_scanned += bytes_read;
+
+            // Use CompiledPattern's optimized find_in_buffer
+            found_address = pattern.find_in_buffer(buffer.data(), bytes_read, current_address);
+
+            if (found_address != 0) {
+                break;
+            }
+        }
+
+        current_address += read_size;
+    }
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+
+    metrics_->record_scan(total_scanned, duration.count(), found_address != 0);
+
     return found_address;
 }
 
