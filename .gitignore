@@ -240,7 +240,9 @@ example/x64/
 *_NOTES.md
 *_TODO.md
 *_INTERNAL.md
+*_COMPLETE.md
 PROFESSIONALISM_*.md
+THREADING_*.md
 
 ##########################################################################
 # End ArgoSentry-specific
