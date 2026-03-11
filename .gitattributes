@@ -1,0 +1,56 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.cpp text eol=crlf
+*.hh text eol=crlf
+*.h text eol=crlf
+*.hpp text eol=crlf
+*.c text eol=crlf
+*.cc text eol=crlf
+*.cxx text eol=crlf
+
+# Visual Studio files
+*.sln text eol=crlf
+*.vcxproj text eol=crlf
+*.vcxproj.filters text eol=crlf
+*.vcxproj.user text eol=crlf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+LICENSE text eol=lf
+
+# Scripts
+*.sh text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Configuration
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ini text eol=crlf
+
+# Binary files
+*.dll binary
+*.lib binary
+*.exe binary
+*.obj binary
+*.pdb binary
+*.exp binary
+*.ilk binary
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+
+# Archives
+*.zip binary
+*.7z binary
+*.tar binary
+*.gz binary
