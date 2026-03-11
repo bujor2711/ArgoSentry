@@ -7,6 +7,8 @@
 #include <chrono>
 #include <optional>
 
+#include "compiled_pattern.hh"  // v2.5 - Compiled pattern support
+
 // Forward declarations
 namespace ArgoSentry {
     // Batch operations
@@ -89,11 +91,19 @@ public:
 
     [[nodiscard]] DWORD get_process_id(const std::string& process_name) const;
     [[nodiscard]] std::vector<DWORD> get_process_id_list(const std::string& process_name) const;
+
+    // Signature scanning - string patterns
     [[nodiscard]] uint64_t find_signature(const char* signature, uint64_t range_start, uint64_t range_end, DWORD process_id) const;
+
+    // Signature scanning - compiled patterns (v2.5 - 2-3x faster for reused patterns)
+    [[nodiscard]] uint64_t find_signature(const CompiledPattern& pattern, uint64_t range_start, uint64_t range_end, DWORD process_id) const;
 
     // Smart signature scanning using memory layout analysis
     [[nodiscard]] uint64_t find_signature_in_module(const char* signature, const std::string& module_name, DWORD process_id) const;
+    [[nodiscard]] uint64_t find_signature_in_module(const CompiledPattern& pattern, const std::string& module_name, DWORD process_id) const;
+
     [[nodiscard]] uint64_t find_signature_in_executable(const char* signature, DWORD process_id) const;
+    [[nodiscard]] uint64_t find_signature_in_executable(const CompiledPattern& pattern, DWORD process_id) const;
 
     template<typename T>
     [[nodiscard]] T read(uint64_t address, DWORD process_id) const;

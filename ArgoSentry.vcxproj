@@ -15,6 +15,7 @@
     <ClInclude Include="include\ArgoSentry\async.hh" />
     <ClInclude Include="include\ArgoSentry\batch.hh" />
     <ClInclude Include="include\ArgoSentry\cache.hh" />
+    <ClInclude Include="include\ArgoSentry\compiled_pattern.hh" />
     <ClInclude Include="include\ArgoSentry\config.hh" />
     <ClInclude Include="include\ArgoSentry\builder.hh" />
     <ClInclude Include="include\ArgoSentry\differ.hh" />
@@ -26,7 +27,10 @@
     <ClInclude Include="include\ArgoSentry\internal\volkresource.hh" />
     <ClInclude Include="include\ArgoSentry\memory_layout.hh" />
     <ClInclude Include="include\ArgoSentry\metrics.hh" />
+    <ClInclude Include="include\ArgoSentry\parallel_scanner.hh" />
+    <ClInclude Include="include\ArgoSentry\pattern_library.hh" />
     <ClInclude Include="include\ArgoSentry\process.hh" />
+    <ClInclude Include="include\ArgoSentry\rate_limiter.hh" />
     <ClInclude Include="include\ArgoSentry\validators.hh" />
     <ClInclude Include="external\leechcore\leechcore.h" />
     <ClInclude Include="external\vmm\vmmdll.h" />
@@ -39,11 +43,10 @@
   </ItemGroup>
   <!-- Source Files - Only main library (NO mock, NO tests, NO examples) -->
   <ItemGroup>
-
-
     <ClCompile Include="src\async.cpp" />
     <ClCompile Include="src\batch.cpp" />
     <ClCompile Include="src\cache.cpp" />
+    <ClCompile Include="src\compiled_pattern.cpp" />
     <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\builder.cpp" />
     <ClCompile Include="src\differ.cpp" />
@@ -53,10 +56,12 @@
     <ClCompile Include="src\inputstate.cpp" />
     <ClCompile Include="src\memory_layout.cpp" />
     <ClCompile Include="src\metrics.cpp" />
+    <ClCompile Include="src\parallel_scanner.cpp" />
+    <ClCompile Include="src\pattern_library.cpp" />
     <ClCompile Include="src\process.cpp" />
+    <ClCompile Include="src\rate_limiter.cpp" />
     <ClCompile Include="src\validators.cpp" />
     <ClCompile Include="src\dma_batch_integration.cpp" />
-    <ClCompile Include="src\rate_limiter.cpp" />
   </ItemGroup>
   <!-- Documentation -->
   <ItemGroup>
@@ -82,6 +87,7 @@
     <None Include="README.md" />
     <None Include="RELEASE_NOTES_v2.0.md" />
     <None Include="ROADMAP.md" />
+    <None Include="THREADING_COMPLETE.md" />
     <None Include="v2.0_IMPLEMENTATION_COMPLETE.md" />
     <None Include="ArgoSentry.ini" />
     <None Include="docs\API_REFERENCE.md" />
@@ -102,13 +108,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>

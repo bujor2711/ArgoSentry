@@ -12,6 +12,7 @@
 #include "ArgoSentry/differ.hh"
 #include "ArgoSentry/builder.hh"  // v2.2 - Builder pattern
 #include "ArgoSentry/rate_limiter.hh"  // v2.3 - Rate limiting
+#include "ArgoSentry/compiled_pattern.hh"  // v2.5 - Pattern compilation
 
 #define NOMINMAX
 #include <Windows.h>
@@ -428,15 +429,33 @@ uint64_t DMA::find_signature_in_module(const char* signature,
     if (!memory_analyzer_) {
         throw std::runtime_error("Memory analyzer not initialized");
     }
-    
+
     // Find module
     auto module = memory_analyzer_->find_module(process_id, module_name);
     if (!module) {
         return 0; // Module not found
     }
-    
+
     // Scan within module range
     return find_signature(signature, module->base_address, 
+                          module->end_address(), process_id);
+}
+
+uint64_t DMA::find_signature_in_module(const CompiledPattern& pattern, 
+                                        const std::string& module_name, 
+                                        DWORD process_id) const {
+    if (!memory_analyzer_) {
+        throw std::runtime_error("Memory analyzer not initialized");
+    }
+
+    // Find module
+    auto module = memory_analyzer_->find_module(process_id, module_name);
+    if (!module) {
+        return 0; // Module not found
+    }
+
+    // Scan within module range with compiled pattern
+    return find_signature(pattern, module->base_address, 
                           module->end_address(), process_id);
 }
 
@@ -445,10 +464,10 @@ uint64_t DMA::find_signature_in_executable(const char* signature,
     if (!memory_analyzer_) {
         throw std::runtime_error("Memory analyzer not initialized");
     }
-    
+
     // Get all executable regions
     auto regions = memory_analyzer_->get_executable_regions(process_id);
-    
+
     // Search each executable region
     for (const auto& region : regions) {
         uint64_t result = find_signature(signature, region.base_address, 
@@ -457,7 +476,28 @@ uint64_t DMA::find_signature_in_executable(const char* signature,
             return result;
         }
     }
-    
+
+    return 0; // Not found
+}
+
+uint64_t DMA::find_signature_in_executable(const CompiledPattern& pattern, 
+                                            DWORD process_id) const {
+    if (!memory_analyzer_) {
+        throw std::runtime_error("Memory analyzer not initialized");
+    }
+
+    // Get all executable regions
+    auto regions = memory_analyzer_->get_executable_regions(process_id);
+
+    // Search each executable region with compiled pattern
+    for (const auto& region : regions) {
+        uint64_t result = find_signature(pattern, region.base_address, 
+                                          region.end_address(), process_id);
+        if (result != 0) {
+            return result;
+        }
+    }
+
     return 0; // Not found
 }
 

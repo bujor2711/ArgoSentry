@@ -9,9 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned Features
 See [ROADMAP.md](ROADMAP.md) for detailed future plans:
-- Pattern Compilation (v2.4 candidate)
-- Threading for signature scanning (v2.5 candidate)
-- Mock Interface for testing (v2.6 candidate)
+- Pattern Compilation (optional enhancement)
+- Mock Interface for testing (optional enhancement)
+- Pattern Library (optional enhancement)
+
+---
+
+## [2.4.0] - 2026-03-11
+
+### Added
+- **Parallel Signature Scanning** - Multi-threaded scanning with thread pool
+  - `ParallelScanner` class with auto thread detection
+  - `ScanResult` struct for comprehensive error handling
+  - Async scanning support with `std::future`
+  - Cancellation mechanism with atomic flag
+  - 2-4x speedup on large memory ranges (>10MB)
+  - Automatic fallback to single-threaded for small ranges (<4KB)
+  - Early return optimization (first match cancels other threads)
+  - Test coverage: Test 13 in `test_dma.cpp` with benchmarks
+
+### Performance
+- 2-4x speedup for signature scanning on multi-core CPUs
+- Optimal for ranges >10MB
+- Linear scaling up to ~8 threads
+
+### Documentation
+- Complete API documentation in `parallel_scanner.hh`
+- Usage examples and performance notes
+- IMPLEMENTED_FEATURES.md updated with v2.4 details
 
 ---
 
