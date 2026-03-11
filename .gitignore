@@ -235,6 +235,13 @@ example/x64/
 # User-specific VS files (if not already covered)
 *.vcxproj.user
 
+# Internal development notes (DO NOT upload to GitHub)
+*_SUMMARY.md
+*_NOTES.md
+*_TODO.md
+*_INTERNAL.md
+PROFESSIONALISM_*.md
+
 ##########################################################################
 # End ArgoSentry-specific
 ##########################################################################
