@@ -1171,41 +1171,26 @@ bool test_pattern_library(ArgoSentry::DMA& dma, DWORD pid) {
         auto cs2_patterns = library.search_by_game("cs2.exe");
         print_success(std::string("Found ") + std::to_string(cs2_patterns.size()) + " CS2 patterns");
 
-        print_info("\nTest 7: Integration with DMA (if process selected)...");
-        if (pid != 0) {
-            auto player_pattern = library.get_pattern("player_base");
-            if (player_pattern.has_value()) {
-                print_info("Searching for player_base pattern...");
+        print_info("\nTest 7: Integration with CompiledPattern (v2.5)...");
+        // Test pattern compilation with library patterns
+        auto player_pattern = library.get_pattern("player_base");
+        if (player_pattern.has_value()) {
+            try {
+                print_info("Compiling 'player_base' pattern from library...");
+                auto compiled = ArgoSentry::CompiledPattern::compile(player_pattern->pattern);
+                print_success(std::string("Pattern compiled! Length: ") + std::to_string(compiled.get_length()) + " bytes");
 
-                try {
-                    // Get first module (usually .exe or main DLL)
-                    auto modules = dma.get_modules(pid);
-                    if (!modules.empty()) {
-                        uint64_t start = modules[0].base_address;
-                        uint64_t end = start + modules[0].size;
-
-                        uint64_t addr = dma.find_signature(
-                            player_pattern->pattern.c_str(),
-                            start,
-                            end,
-                            pid
-                        );
-
-                        if (addr) {
-                            print_success(std::string("Pattern found at: 0x") + std::to_string(addr));
-                        }
-                        else {
-                            print_warning("Pattern not found in module");
-                        }
-                    }
-                }
-                catch (const std::exception& e) {
-                    print_warning(std::string("DMA scan failed: ") + e.what());
-                }
+                // Show pattern details
+                std::cout << "  Original: " << player_pattern->pattern << "\n";
+                std::cout << "  Compiled bytes: " << compiled.get_bytes().size() << "\n";
+                std::cout << "  Mask bytes: " << compiled.get_mask().size() << "\n";
+            }
+            catch (const std::exception& e) {
+                print_error(std::string("Pattern compilation failed: ") + e.what());
             }
         }
         else {
-            print_warning("Skipping DMA integration (no process selected)");
+            print_warning("'player_base' pattern not found in library");
         }
 
         print_info("\nTest 8: Integration with CompiledPattern (v2.5 + v2.6)...");
