@@ -1,11 +1,11 @@
-#include "include/VolkDMA/metrics.hh"
+#include "include/ArgoSentry/metrics.hh"
 
 #include <sstream>
 #include <iomanip>
 #include <iostream>
 #include <algorithm>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace Metrics {
 
 // ============================================================================
@@ -346,4 +346,6 @@ std::string format_bytes(size_t bytes) {
 } // namespace Utils
 
 } // namespace Metrics
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

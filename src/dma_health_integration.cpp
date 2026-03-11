@@ -1,11 +1,11 @@
 // VolkDMA - Health Monitoring Integration with DMA Class
 // v1.8 - Integrate health monitoring into DMA
 
-#include "VolkDMA/dma.hh"
-#include "VolkDMA/health.hh"
+#include "ArgoSentry/dma.hh"
+#include "ArgoSentry/health.hh"
 #include <stdexcept>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 //==============================================================================
 // Health Monitoring Methods
@@ -74,4 +74,6 @@ const HealthMonitor& DMA::get_health_monitor() const {
     return *health_monitor_;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

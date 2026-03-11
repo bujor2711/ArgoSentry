@@ -1,8 +1,8 @@
-// VolkDMA/async.hh - Async Operations for Multi-Core Performance
-// v2.0 - Provides 2-4x speedup through parallelization
+// ArgoSentry/async.hh - Async Operations for Multi-Core Performance
+// v2.3 - Provides 2-4x speedup through parallelization
 #pragma once
 
-#include <VolkDMA/dma.hh>  // Need complete DMA definition for templates
+#include <ArgoSentry/dma.hh>  // Need complete DMA definition for templates
 #include <future>
 #include <functional>
 #include <vector>
@@ -14,7 +14,7 @@
 #include <memory>
 #include <Windows.h>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // DMA class forward declaration (already included above)
 // class DMA;
@@ -235,4 +235,5 @@ std::vector<std::future<T>> read_multiple_typed_async(
 }
 
 } // namespace Async
-} // namespace VolkDMA
+} // namespace ArgoSentry
+

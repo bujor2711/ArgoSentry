@@ -1,12 +1,12 @@
 // Simplified Health Monitoring Implementation
 // Minimal implementation for compilation without DMA dependencies
 
-#include "VolkDMA/health.hh"
+#include "ArgoSentry/health.hh"
 #include <sstream>
 #include <iomanip>
 #include <ctime>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // Constructor
 HealthMonitor::HealthMonitor(void* dma_instance)
@@ -177,4 +177,6 @@ HealthStatus HealthMonitor::aggregate_status(const std::vector<HealthCheck>& che
     return HealthStatus::Healthy;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

@@ -8,7 +8,7 @@
 #include <chrono>
 #include <Windows.h>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 /// Request for a single read operation in a batch
 struct ReadRequest {
@@ -222,6 +222,7 @@ std::vector<std::optional<T>> BatchOperations::batch_read_typed(
     return results;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
 
 #endif // VOLKDMA_BATCH_HH
+

@@ -1,7 +1,7 @@
-#include "VolkDMA/rate_limiter.hh"
+#include "ArgoSentry/rate_limiter.hh"
 #include <thread>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 RateLimiter::RateLimiter(size_t bytes_per_sec)
     : bytes_per_second_limit_(bytes_per_sec)
@@ -111,4 +111,4 @@ bool RateLimiter::check_and_reset_window() {
     return false;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry

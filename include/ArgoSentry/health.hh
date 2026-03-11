@@ -10,7 +10,7 @@
 #include <atomic>
 #include <memory>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 //==============================================================================
 // Health Status
@@ -188,4 +188,5 @@ private:
     HealthStatus aggregate_status(const std::vector<HealthCheck>& checks) const;
 };
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+

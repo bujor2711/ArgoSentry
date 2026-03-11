@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // Forward declaration
 class DMA;
@@ -167,4 +167,4 @@ private:
     bool validate_scan_config() const;
 };
 
-} // namespace VolkDMA
+} // namespace ArgoSentry

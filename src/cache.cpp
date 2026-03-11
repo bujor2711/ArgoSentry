@@ -1,8 +1,8 @@
-#include "include/VolkDMA/cache.hh"
+#include "include/ArgoSentry/cache.hh"
 #include <algorithm>
 #include <iostream>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace Cache {
 
 MemoryCache::MemoryCache(size_t max_size, std::chrono::seconds time_to_live)
@@ -222,4 +222,4 @@ std::chrono::seconds MemoryCache::get_ttl() const {
 }
 
 } // namespace Cache
-} // namespace VolkDMA
+} // namespace ArgoSentry

@@ -5,7 +5,7 @@
 #include <optional>
 #include <unordered_map>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace Config {
 
 /**
@@ -154,4 +154,5 @@ inline DMAConfiguration& GlobalConfig() {
 }
 
 } // namespace Config
-} // namespace VolkDMA
+} // namespace ArgoSentry
+

@@ -8,7 +8,7 @@
 #include <optional>
 
 // Forward declarations
-namespace VolkDMA {
+namespace ArgoSentry {
     // Batch operations
     struct ReadRequest;
     struct BatchReadResult;
@@ -46,7 +46,7 @@ namespace VolkDMA {
 }
 
 // DumpFormat enum (from dumper.hh)
-namespace VolkDMA {
+namespace ArgoSentry {
     enum class DumpFormat {
         Binary,
         Hex,
@@ -59,11 +59,11 @@ using VMM_HANDLE = tdVMM_HANDLE*;
 
 extern "C" void VMMDLL_Close(VMM_HANDLE);
 inline constexpr auto vmm_close = [](VMM_HANDLE h) noexcept { if (h) VMMDLL_Close(h); };
-using VolkHandle = std::unique_ptr<std::remove_pointer_t<VMM_HANDLE>, decltype(vmm_close)>;
+using ArgoHandle = std::unique_ptr<std::remove_pointer_t<VMM_HANDLE>, decltype(vmm_close)>;
 
 using DWORD = unsigned long;
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 class DMA {
 public:
@@ -85,7 +85,7 @@ public:
      */
     static DMABuilder Builder();
 
-    VolkHandle handle;
+    ArgoHandle handle;
 
     [[nodiscard]] DWORD get_process_id(const std::string& process_name) const;
     [[nodiscard]] std::vector<DWORD> get_process_id_list(const std::string& process_name) const;
@@ -212,4 +212,4 @@ std::vector<uint64_t> DMA::find_value_typed(uint64_t start_address, uint64_t end
     return find_memory_value(start_address, end_address, process_id, bytes);
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry

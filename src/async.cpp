@@ -1,13 +1,13 @@
-// VolkDMA/async.cpp - Async Operations Implementation
+// ArgoSentry/async.cpp - Async Operations Implementation
 // v2.0 - Multi-core parallelization for 2-4x performance boost
 
-#include <VolkDMA/async.hh>
-#include <VolkDMA/dma.hh>
+#include <ArgoSentry/async.hh>
+#include <ArgoSentry/dma.hh>
 #include <algorithm>
 #include <chrono>
 #include <iostream>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace Async {
 
 //==============================================================================
@@ -280,4 +280,6 @@ std::future<uint64_t> find_signature_parallel_regions(
 }
 
 } // namespace Async
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

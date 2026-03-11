@@ -1,11 +1,11 @@
 // DMA Batch Operations Integration
 // This file contains the batch operations integration for DMA class
 
-#include "VolkDMA/dma.hh"
-#include "VolkDMA/batch.hh"
+#include "ArgoSentry/dma.hh"
+#include "ArgoSentry/batch.hh"
 #include <stdexcept>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // Batch read - delegates to BatchOperations
 BatchReadResult DMA::batch_read(
@@ -68,4 +68,6 @@ template std::vector<std::optional<int64_t>> DMA::batch_read_typed<int64_t>(cons
 template std::vector<std::optional<float>> DMA::batch_read_typed<float>(const std::vector<uint64_t>&, DWORD);
 template std::vector<std::optional<double>> DMA::batch_read_typed<double>(const std::vector<uint64_t>&, DWORD);
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

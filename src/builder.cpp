@@ -1,9 +1,9 @@
-#include "VolkDMA/builder.hh"
-#include "VolkDMA/dma.hh"
+#include "ArgoSentry/builder.hh"
+#include "ArgoSentry/dma.hh"
 #include <stdexcept>
 #include <sstream>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // Constructor with sensible defaults
 DMABuilder::DMABuilder()
@@ -234,4 +234,6 @@ bool DMABuilder::validate_scan_config() const {
     return true;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

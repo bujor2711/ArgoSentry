@@ -1,5 +1,5 @@
-#include "VolkDMA/batch.hh"
-#include "VolkDMA/validators.hh"
+#include "ArgoSentry/batch.hh"
+#include "ArgoSentry/validators.hh"
 #include <algorithm>
 #include <chrono>
 #include <map>
@@ -9,7 +9,7 @@ extern "C" {
     #include "external/vmm/vmmdll.h"
 }
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // Implementation struct
 struct BatchOperations::Impl {
@@ -277,4 +277,6 @@ bool BatchOperations::is_statistics_enabled() const {
     return pimpl_->stats_enabled;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

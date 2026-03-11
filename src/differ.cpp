@@ -1,11 +1,11 @@
-#include "../include/VolkDMA/differ.hh"
-#include "../include/VolkDMA/dma.hh"
+#include "../include/ArgoSentry/differ.hh"
+#include "../include/ArgoSentry/dma.hh"
 #include <fstream>
 #include <algorithm>
 #include <thread>
 #include <cstring>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 MemoryDiffer::MemoryDiffer(const DiffConfig& config)
     : config_(config)
@@ -391,4 +391,6 @@ bool MemoryDiffer::should_group_with_previous(const MemoryDiff& prev, uint64_t c
     return gap <= config_.adjacency_threshold;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

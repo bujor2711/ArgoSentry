@@ -5,7 +5,7 @@
 #include <string>
 #include <mutex>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace Metrics {
 
 // Thread-safe metrics structure
@@ -144,4 +144,5 @@ namespace Utils {
 }
 
 } // namespace Metrics
-} // namespace VolkDMA
+} // namespace ArgoSentry
+

@@ -1,5 +1,5 @@
-#include "include/VolkDMA/process.hh"
-#include "VolkDMA/dma_internal.hh"  // Complete DMA definitions
+#include "include/ArgoSentry/process.hh"
+#include "ArgoSentry/dma_internal.hh"  // Complete DMA definitions
 
 #include <string>
 #include <iostream>
@@ -131,8 +131,8 @@ namespace Volk {
 
 #include "external/vmm/vmmdll.h"
 
-#include "include/VolkDMA/dma.hh"
-#include "include/VolkDMA/internal/volkresource.hh"
+#include "include/ArgoSentry/dma.hh"
+#include "include/ArgoSentry/internal/volkresource.hh"
 
 static const Volk::Log::Logger logger{ "PROCESS" };
 

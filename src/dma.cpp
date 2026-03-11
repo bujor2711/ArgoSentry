@@ -1,17 +1,17 @@
-// VolkDMA - Main DMA Implementation
+// ArgoSentry - Main DMA Implementation
 // Complete implementation with FPGA hardware support
-// v2.0 - Full functional implementation
+// v2.3 - Full functional implementation with Rate Limiting
 
-#include "VolkDMA/dma.hh"
-#include "VolkDMA/validators.hh"
-#include "VolkDMA/batch.hh"
-#include "VolkDMA/metrics.hh"
-#include "VolkDMA/cache.hh"
-#include "VolkDMA/health.hh"
-#include "VolkDMA/memory_layout.hh"
-#include "VolkDMA/differ.hh"
-#include "VolkDMA/builder.hh"  // v2.2 - Builder pattern
-#include "VolkDMA/rate_limiter.hh"  // v2.3 - Rate limiting
+#include "ArgoSentry/dma.hh"
+#include "ArgoSentry/validators.hh"
+#include "ArgoSentry/batch.hh"
+#include "ArgoSentry/metrics.hh"
+#include "ArgoSentry/cache.hh"
+#include "ArgoSentry/health.hh"
+#include "ArgoSentry/memory_layout.hh"
+#include "ArgoSentry/differ.hh"
+#include "ArgoSentry/builder.hh"  // v2.2 - Builder pattern
+#include "ArgoSentry/rate_limiter.hh"  // v2.3 - Rate limiting
 
 #define NOMINMAX
 #include <Windows.h>
@@ -26,7 +26,7 @@ extern "C" {
     #include "external/vmm/vmmdll.h"
 }
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 //==============================================================================
 // Constructor - Initialize DMA with FPGA hardware
@@ -684,4 +684,5 @@ size_t DMA::get_rate_limit() const {
     return rate_limiter_ ? rate_limiter_->get_limit() : 0;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+

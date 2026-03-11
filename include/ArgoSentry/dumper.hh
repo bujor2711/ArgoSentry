@@ -12,7 +12,7 @@
 using DWORD = unsigned long;
 #endif
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // Forward declaration
 class DMA;
@@ -207,4 +207,5 @@ private:
     bool auto_metadata_;            // Auto-save metadata
 };
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+

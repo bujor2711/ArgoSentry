@@ -198,6 +198,46 @@ PublishScripts/
 *.nupkg
 # NuGet Symbol Packages
 *.snupkg
+
+##########################################################################
+# ArgoSentry-specific ignores
+##########################################################################
+
+# Build artifacts (but keep DLLs for user convenience)
+*.lib
+*.pdb
+*.idb
+*.obj
+*.ilk
+*.exp
+
+# Build logs
+build_log.txt
+*.recipe
+
+# Visual Studio tracking logs
+*.tlog
+*.lastbuildstate
+
+# Example build artifacts (keep TestDMA.exe but ignore other builds)
+example/*.obj
+example/x64/
+
+# Backup files
+*.old
+*.backup
+*.bak
+
+# Temporary files
+*.tmp
+*.temp
+
+# User-specific VS files (if not already covered)
+*.vcxproj.user
+
+##########################################################################
+# End ArgoSentry-specific
+##########################################################################
 # The packages folder can be ignored because of Package Restore
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.

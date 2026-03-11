@@ -7,7 +7,7 @@
 
 using DWORD = unsigned long;
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace MemoryLayout {
 
 /**
@@ -174,4 +174,5 @@ enum class MemoryState : uint32_t {
 };
 
 } // namespace MemoryLayout
-} // namespace VolkDMA
+} // namespace ArgoSentry
+

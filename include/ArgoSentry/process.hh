@@ -4,11 +4,11 @@
 #include <unordered_map>
 #include <vector>
 
-namespace VolkDMA {
+namespace ArgoSentry {
     class DMA;  // Forward declaration in correct namespace
 }
 
-using VolkDMA::DMA;  // Bring into global scope for backward compatibility
+using ArgoSentry::DMA;  // Bring into global scope for backward compatibility
 using VMMDLL_SCATTER_HANDLE = void*;
 using DWORD = unsigned long;
 

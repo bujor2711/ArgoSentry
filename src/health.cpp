@@ -1,14 +1,14 @@
 // VolkDMA - Health Monitoring Implementation
 // v1.8 - System health checks and monitoring
 
-#include "VolkDMA/health.hh"
-#include "VolkDMA/dma.hh"
-#include "VolkDMA/metrics.hh"
+#include "ArgoSentry/health.hh"
+#include "ArgoSentry/dma.hh"
+#include "ArgoSentry/metrics.hh"
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 //==============================================================================
 // Constructor / Destructor
@@ -439,4 +439,6 @@ HealthStatus HealthMonitor::aggregate_status(const std::vector<HealthCheck>& che
     return worst;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

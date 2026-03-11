@@ -5,7 +5,7 @@
 #pragma once
 
 // Forward declare the namespace first
-namespace VolkDMA {
+namespace ArgoSentry {
     class DMA;
 }
 
@@ -21,3 +21,4 @@ namespace VolkDMA {
 #include "dma.hh"
 
 // Now DMA class is fully defined with all its member types available
+

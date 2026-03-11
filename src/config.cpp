@@ -1,4 +1,4 @@
-#include "include/VolkDMA/config.hh"
+#include "include/ArgoSentry/config.hh"
 
 #include <fstream>
 #include <sstream>
@@ -6,7 +6,7 @@
 #include <cctype>
 #include <iostream>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace Config {
 
 DMAConfiguration::DMAConfiguration() {
@@ -201,4 +201,6 @@ DMAConfiguration& DMAConfiguration::get_instance() {
 }
 
 } // namespace Config
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

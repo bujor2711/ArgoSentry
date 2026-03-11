@@ -1,4 +1,4 @@
-// VolkDMA Real Hardware Test Program
+// ArgoSentry Real Hardware Test Program
 // Tests all library functions with actual FPGA DMA card
 // REQUIRES: Administrator privileges, FPGA connected, drivers installed
 
@@ -6,11 +6,11 @@
 #include <Windows.h>
 
 // Include ONLY main DMA header - it includes everything else
-#include <VolkDMA/dma.hh>
-#include <VolkDMA/batch.hh>    // For BatchReadResult, ReadRequest
-#include <VolkDMA/health.hh>   // For HealthStatus
-#include <VolkDMA/async.hh>    // For Async Operations v2.0
-#include <VolkDMA/differ.hh>   // For Memory Diffing v2.1
+#include <ArgoSentry/dma.hh>
+#include <ArgoSentry/batch.hh>    // For BatchReadResult, ReadRequest
+#include <ArgoSentry/health.hh>   // For HealthStatus
+#include <ArgoSentry/async.hh>    // For Async Operations v2.0
+#include <ArgoSentry/differ.hh>   // For Memory Diffing v2.1
 
 #include <iostream>
 #include <iomanip>
@@ -40,7 +40,7 @@ void print_warning(const std::string& msg) {
 }
 
 // Test 1: Initialization
-bool test_initialization(VolkDMA::DMA& dma) {
+bool test_initialization(ArgoSentry::DMA& dma) {
     print_header("TEST 1: DMA Initialization");
     
     try {
@@ -54,7 +54,7 @@ bool test_initialization(VolkDMA::DMA& dma) {
 }
 
 // Test 2: Process Discovery
-bool test_process_discovery(VolkDMA::DMA& dma, DWORD& pid) {
+bool test_process_discovery(ArgoSentry::DMA& dma, DWORD& pid) {
     print_header("TEST 2: Process Discovery");
     
     std::string process_name;
@@ -89,7 +89,7 @@ bool test_process_discovery(VolkDMA::DMA& dma, DWORD& pid) {
 }
 
 // Test 3: Memory Reading
-bool test_memory_reading(VolkDMA::DMA& dma, DWORD pid) {
+bool test_memory_reading(ArgoSentry::DMA& dma, DWORD pid) {
     print_header("TEST 3: Memory Reading");
     
     if (pid == 0) {
@@ -130,7 +130,7 @@ bool test_memory_reading(VolkDMA::DMA& dma, DWORD pid) {
 }
 
 // Test 4: Batch Operations
-bool test_batch_operations(VolkDMA::DMA& dma, DWORD pid) {
+bool test_batch_operations(ArgoSentry::DMA& dma, DWORD pid) {
     print_header("TEST 4: Batch Operations");
     
     if (pid == 0) {
@@ -142,7 +142,7 @@ bool test_batch_operations(VolkDMA::DMA& dma, DWORD pid) {
         print_info("Testing batch read operations...");
         
         // Create batch read requests
-        std::vector<VolkDMA::ReadRequest> requests;
+        std::vector<ArgoSentry::ReadRequest> requests;
         std::vector<std::vector<uint8_t>> buffers(3);
 
         for (size_t i = 0; i < 3; i++) {
@@ -171,7 +171,7 @@ bool test_batch_operations(VolkDMA::DMA& dma, DWORD pid) {
 }
 
 // Test 5: Signature Scanning
-bool test_signature_scanning(VolkDMA::DMA& dma, DWORD pid) {
+bool test_signature_scanning(ArgoSentry::DMA& dma, DWORD pid) {
     print_header("TEST 5: Signature Scanning");
     
     if (pid == 0) {
@@ -208,7 +208,7 @@ bool test_signature_scanning(VolkDMA::DMA& dma, DWORD pid) {
 }
 
 // Test 6: Performance Metrics
-bool test_metrics(VolkDMA::DMA& dma) {
+bool test_metrics(ArgoSentry::DMA& dma) {
     print_header("TEST 6: Performance Metrics");
 
     try {
@@ -228,7 +228,7 @@ bool test_metrics(VolkDMA::DMA& dma) {
 }
 
 // Test 7: Health Monitoring
-bool test_health_monitoring(VolkDMA::DMA& dma) {
+bool test_health_monitoring(ArgoSentry::DMA& dma) {
     print_header("TEST 7: Health Monitoring");
 
     try {
@@ -248,7 +248,7 @@ bool test_health_monitoring(VolkDMA::DMA& dma) {
 }
 
 // Test 9: List All Processes (Diagnostic)
-bool test_list_all_processes(VolkDMA::DMA& dma) {
+bool test_list_all_processes(ArgoSentry::DMA& dma) {
     print_header("TEST 9: List All Processes (Diagnostic)");
 
     try {
@@ -304,7 +304,7 @@ bool test_list_all_processes(VolkDMA::DMA& dma) {
 }
 
 // Test 10: Async Operations (v2.0)
-bool test_async_operations(VolkDMA::DMA& dma, DWORD pid) {
+bool test_async_operations(ArgoSentry::DMA& dma, DWORD pid) {
     print_header("TEST 10: Async Operations (v2.0 - Multi-Core)");
 
     if (pid == 0) {
@@ -319,7 +319,7 @@ bool test_async_operations(VolkDMA::DMA& dma, DWORD pid) {
         print_info("\n1. Async Signature Scanning:");
         print_info("   Launching async scan in background...");
 
-        auto future = VolkDMA::Async::find_signature_async(
+        auto future = ArgoSentry::Async::find_signature_async(
             dma, "48 8B 05 ?? ?? ?? ??", 
             0x140000000, 0x140100000, pid
         );
@@ -340,7 +340,7 @@ bool test_async_operations(VolkDMA::DMA& dma, DWORD pid) {
             0x140000000, 0x140001000, 0x140002000
         };
 
-        auto futures = VolkDMA::Async::read_multiple_async(dma, addresses, 8, pid);
+        auto futures = ArgoSentry::Async::read_multiple_async(dma, addresses, 8, pid);
 
         print_info("   Reading " + std::to_string(futures.size()) + " addresses in parallel...");
         size_t success_count = 0;
@@ -354,7 +354,7 @@ bool test_async_operations(VolkDMA::DMA& dma, DWORD pid) {
 
         // Test 3: Thread pool
         print_info("\n3. Thread Pool:");
-        VolkDMA::Async::DMAThreadPool pool(4); // 4 worker threads
+        ArgoSentry::Async::DMAThreadPool pool(4); // 4 worker threads
         print_success("   Thread pool created with " + 
                      std::to_string(pool.get_thread_count()) + " threads");
 
@@ -376,7 +376,7 @@ bool test_async_operations(VolkDMA::DMA& dma, DWORD pid) {
         print_info("   Scanning with progress updates...");
 
         size_t last_percent = 0;
-        auto progress_future = VolkDMA::Async::find_signature_async_with_progress(
+        auto progress_future = ArgoSentry::Async::find_signature_async_with_progress(
             dma, "48 8B 05", 0x140000000, 0x140100000, pid,
             [&last_percent](size_t current, size_t total, const std::string& status) {
                 size_t percent = (current * 100) / total;
@@ -403,7 +403,7 @@ bool test_async_operations(VolkDMA::DMA& dma, DWORD pid) {
 }
 
 // Test 11: Memory Diffing (v2.1)
-bool test_memory_diffing(VolkDMA::DMA& dma, DWORD pid) {
+bool test_memory_diffing(ArgoSentry::DMA& dma, DWORD pid) {
     print_header("TEST 11: Memory Diffing (v2.1 - Cheat Engine Style)");
 
     if (pid == 0) {
@@ -494,7 +494,7 @@ bool test_memory_diffing(VolkDMA::DMA& dma, DWORD pid) {
 }
 
 // Test 12: Rate Limiting (v2.3)
-bool test_rate_limiting(VolkDMA::DMA& dma, DWORD pid) {
+bool test_rate_limiting(ArgoSentry::DMA& dma, DWORD pid) {
     print_header("TEST 12: Rate Limiting (v2.3 - Anti-Detection)");
 
     if (pid == 0) {
@@ -659,7 +659,7 @@ int main() {
     try {
         // Initialize DMA
         print_info("Initializing DMA device...");
-        VolkDMA::DMA dma(true);  // true = use memory map
+        ArgoSentry::DMA dma(true);  // true = use memory map
         print_success("DMA initialized with FPGA hardware!");
         
         DWORD current_pid = 0;
@@ -754,3 +754,4 @@ int main() {
         return 1;
     }
 }
+

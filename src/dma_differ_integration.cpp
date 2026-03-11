@@ -1,8 +1,8 @@
-#include "../include/VolkDMA/dma.hh"
-#include "../include/VolkDMA/differ.hh"
+#include "../include/ArgoSentry/dma.hh"
+#include "../include/ArgoSentry/differ.hh"
 #include <stdexcept>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // Wrapper methods for Memory Diffing
 
@@ -70,4 +70,4 @@ const MemoryDiffer& DMA::get_memory_differ() const {
     return *memory_differ_;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry

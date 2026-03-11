@@ -1,10 +1,10 @@
-# 🗺️ VolkDMA Roadmap - Features Rămase
+# 🗺️ ArgoSentry Roadmap - Features Rămase
 
 **Versiune curentă:** v2.3 (Rate Limiting)  
 **Ultima actualizare:** 11 Martie 2026  
 **Status:** Optional Features
 
-> **📝 Notă:** Features implementate (v1.0 - v2.2) sunt documentate în `IMPLEMENTED_FEATURES.md`
+> **📝 Notă:** Features implementate (v1.0 - v2.3) sunt documentate în `IMPLEMENTED_FEATURES.md`
 
 ---
 
@@ -488,10 +488,10 @@ auto result = scanner.find_signature_parallel(pattern, start, end, pid);
 **✨ FEATURE IMPLEMENTAT! ✨**
 
 **Locație:**
-- `include/VolkDMA/rate_limiter.hh` - Header cu RateLimiter class
+- `include/ArgoSentry/rate_limiter.hh` - Header cu RateLimiter class
 - `src/rate_limiter.cpp` - Implementare thread-safe
-- `include/VolkDMA/builder.hh` - Builder integration (`.with_rate_limit()`)
-- `include/VolkDMA/dma.hh` - DMA public methods
+- `include/ArgoSentry/builder.hh` - Builder integration (`.with_rate_limit()`)
+- `include/ArgoSentry/dma.hh` - DMA public methods
 - `src/dma.cpp` - Integration în read operations
 - `example/test_dma.cpp` - Test 12: Rate Limiting
 
@@ -1131,7 +1131,7 @@ public:
                 return PatternLibraryError::FileAccessDenied;
             }
 
-            file << "# VolkDMA Pattern Library\n";
+            file << "# ArgoSentry Pattern Library\n";
             file << "# Format: name|pattern|description|game|version|tags\n\n";
 
             for (const auto& [name, entry] : patterns_) {
@@ -1443,7 +1443,7 @@ TEST(PatternLibraryTest, RealWorldPatterns) {
 ## ❓ **FAQ - Feature Implementation**
 
 ### **Q1: Trebuie să implementez toate cele 9 features?**
-**A:** ❌ **NU!** VolkDMA v2.2 este deja **production ready**. Toate aceste features sunt **optional**. Implementează doar dacă ai un **use case specific**.
+**A:** ❌ **NU!** ArgoSentry v2.3 este deja **production ready**. Toate aceste features sunt **optional**. Implementează doar dacă ai un **use case specific**.
 
 ---
 
@@ -1547,7 +1547,7 @@ TEST(PatternLibraryTest, RealWorldPatterns) {
 - **GCC 13+:** ✅ Good C++23 support
 - **Clang 16+:** ✅ Good C++23 support
 
-**Dar:** VolkDMA target e **C++17** pentru compatibility.
+**Dar:** ArgoSentry target e **C++17** pentru compatibility.
 
 **Dacă vrei C++23:**
 - `std::expected` pentru error handling (vs. `std::optional`)
@@ -1576,7 +1576,7 @@ TEST(PatternLibraryTest, RealWorldPatterns) {
 
 ---
 
-### **Q11: Cum pot contribui la VolkDMA?**
+### **Q11: Cum pot contribui la ArgoSentry?**
 **A:** 
 1. 🐛 **Bug reports** - Open issue pe GitHub
 2. 📝 **Documentation** - Improve README/ROADMAP
@@ -1624,7 +1624,7 @@ Optional Features: ~56-72 ore (8 features)
 
 ## 🎯 **RECOMANDARE FINALĂ**
 
-**VolkDMA v2.3 este PRODUCTION READY!** 🎉
+**ArgoSentry v2.3 este PRODUCTION READY!** 🎉
 
 ### **Ce AI:**
 ✅ 14 versiuni (v1.0 - v2.3)  

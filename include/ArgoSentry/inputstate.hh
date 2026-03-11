@@ -5,11 +5,11 @@
 #include <string_view>
 #include <vector>
 
-namespace VolkDMA {
+namespace ArgoSentry {
     class DMA;  // Forward declaration in correct namespace
 }
 
-using VolkDMA::DMA;  // Bring into global scope for backward compatibility
+using ArgoSentry::DMA;  // Bring into global scope for backward compatibility
 using DWORD = unsigned long;
 
 class InputState {
@@ -209,3 +209,5 @@ private:
     [[nodiscard]] bool retrieve_gafAsyncKeyState(const std::vector<DWORD>& csrss_process_ids);
     [[nodiscard]] bool retrieve_gptCursorAsync(const std::vector<DWORD>& csrss_process_ids);
 };
+
+

@@ -10,7 +10,7 @@
 // DWORD type definition
 using DWORD = unsigned long;
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 class DMA; // Forward declaration
 
@@ -149,4 +149,4 @@ std::vector<uint64_t> MemoryDiffer::find_value_typed(
     return find_value(dma, start_address, end_address, process_id, bytes);
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry

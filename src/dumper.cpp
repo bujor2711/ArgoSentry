@@ -2,9 +2,9 @@
 // v1.9 Memory Dump Utilities Implementation
 // Copyright (c) 2026 VolkDMA Project
 
-#include "VolkDMA/dumper.hh"
-#include "VolkDMA/dma.hh"
-#include "VolkDMA/memory_layout.hh"
+#include "ArgoSentry/dumper.hh"
+#include "ArgoSentry/dma.hh"
+#include "ArgoSentry/memory_layout.hh"
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -13,7 +13,7 @@
 #include <filesystem>
 #include <cstring>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // ============================================================================
 // Constructor & Destructor
@@ -691,4 +691,6 @@ DumpFormat MemoryDumper::string_to_format(const std::string& str) const
     return DumpFormat::Binary;
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

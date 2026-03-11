@@ -7,7 +7,7 @@
 #include <shared_mutex>
 #include <optional>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace Cache {
 
 /**
@@ -165,4 +165,4 @@ private:
 };
 
 } // namespace Cache
-} // namespace VolkDMA
+} // namespace ArgoSentry

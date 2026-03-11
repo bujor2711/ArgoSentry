@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -12,22 +12,22 @@
   </ItemGroup>
   <!-- Headers - Only main library -->
   <ItemGroup>
-    <ClInclude Include="include\VolkDMA\async.hh" />
-    <ClInclude Include="include\VolkDMA\batch.hh" />
-    <ClInclude Include="include\VolkDMA\cache.hh" />
-    <ClInclude Include="include\VolkDMA\config.hh" />
-    <ClInclude Include="include\VolkDMA\builder.hh" />
-    <ClInclude Include="include\VolkDMA\differ.hh" />
-    <ClInclude Include="include\VolkDMA\dma.hh" />
-    <ClInclude Include="include\VolkDMA\dma_internal.hh" />
-    <ClInclude Include="include\VolkDMA\dumper.hh" />
-    <ClInclude Include="include\VolkDMA\health.hh" />
-    <ClInclude Include="include\VolkDMA\inputstate.hh" />
-    <ClInclude Include="include\VolkDMA\internal\volkresource.hh" />
-    <ClInclude Include="include\VolkDMA\memory_layout.hh" />
-    <ClInclude Include="include\VolkDMA\metrics.hh" />
-    <ClInclude Include="include\VolkDMA\process.hh" />
-    <ClInclude Include="include\VolkDMA\validators.hh" />
+    <ClInclude Include="include\ArgoSentry\async.hh" />
+    <ClInclude Include="include\ArgoSentry\batch.hh" />
+    <ClInclude Include="include\ArgoSentry\cache.hh" />
+    <ClInclude Include="include\ArgoSentry\config.hh" />
+    <ClInclude Include="include\ArgoSentry\builder.hh" />
+    <ClInclude Include="include\ArgoSentry\differ.hh" />
+    <ClInclude Include="include\ArgoSentry\dma.hh" />
+    <ClInclude Include="include\ArgoSentry\dma_internal.hh" />
+    <ClInclude Include="include\ArgoSentry\dumper.hh" />
+    <ClInclude Include="include\ArgoSentry\health.hh" />
+    <ClInclude Include="include\ArgoSentry\inputstate.hh" />
+    <ClInclude Include="include\ArgoSentry\internal\volkresource.hh" />
+    <ClInclude Include="include\ArgoSentry\memory_layout.hh" />
+    <ClInclude Include="include\ArgoSentry\metrics.hh" />
+    <ClInclude Include="include\ArgoSentry\process.hh" />
+    <ClInclude Include="include\ArgoSentry\validators.hh" />
     <ClInclude Include="external\leechcore\leechcore.h" />
     <ClInclude Include="external\vmm\vmmdll.h" />
     <ClInclude Include="external\VolkLog\include\VolkLog\log.hh" />
@@ -39,8 +39,8 @@
   </ItemGroup>
   <!-- Source Files - Only main library (NO mock, NO tests, NO examples) -->
   <ItemGroup>
-    <ClCompile Include="example\list_processes.cpp" />
-    <ClCompile Include="example\show_all_processes.cpp" />
+
+
     <ClCompile Include="src\async.cpp" />
     <ClCompile Include="src\batch.cpp" />
     <ClCompile Include="src\cache.cpp" />
@@ -83,7 +83,7 @@
     <None Include="RELEASE_NOTES_v2.0.md" />
     <None Include="ROADMAP.md" />
     <None Include="v2.0_IMPLEMENTATION_COMPLETE.md" />
-    <None Include="volkdma.ini" />
+    <None Include="ArgoSentry.ini" />
     <None Include="docs\API_REFERENCE.md" />
     <None Include="docs\ARCHITECTURE.md" />
     <None Include="docs\EXAMPLES.md" />
@@ -95,7 +95,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{51264128-c3ad-45f6-9b26-c6096d1fc6a4}</ProjectGuid>
-    <RootNamespace>VolkDMA</RootNamespace>
+    <RootNamespace>ArgoSentry</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

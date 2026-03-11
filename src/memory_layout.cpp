@@ -1,4 +1,4 @@
-#include "include/VolkDMA/memory_layout.hh"
+#include "include/ArgoSentry/memory_layout.hh"
 #include "external/vmm/vmmdll.h"
 #include <algorithm>
 #include <iostream>
@@ -58,7 +58,7 @@
 #undef MEM_RESERVE
 #endif
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace MemoryLayout {
 
 // MemoryRegion member functions
@@ -297,4 +297,6 @@ std::string MemoryLayoutAnalyzer::to_lowercase(const std::string& str) {
 }
 
 } // namespace MemoryLayout
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

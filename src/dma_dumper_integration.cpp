@@ -2,11 +2,11 @@
 // v1.9 Memory Dumper Integration into DMA Class
 // Copyright (c) 2026 VolkDMA Project
 
-#include "VolkDMA/dma.hh"
-#include "VolkDMA/dumper.hh"
+#include "ArgoSentry/dma.hh"
+#include "ArgoSentry/dumper.hh"
 #include <stdexcept>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 // ============================================================================
 // Memory Dumper Integration Methods
@@ -67,4 +67,6 @@ std::vector<uint64_t> DMA::compare_memory_dumps(const std::string& file1,
     }
 }
 
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+

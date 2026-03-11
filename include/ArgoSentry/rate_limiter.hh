@@ -5,7 +5,7 @@
 #include <mutex>
 #include <cstddef>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 
 /**
  * @brief Thread-safe rate limiter for DMA operations
@@ -121,4 +121,4 @@ private:
     bool check_and_reset_window();
 };
 
-} // namespace VolkDMA
+} // namespace ArgoSentry

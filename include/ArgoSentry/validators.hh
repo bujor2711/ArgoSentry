@@ -6,7 +6,7 @@
 
 using DWORD = unsigned long;
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace Validation {
 
 // Validator pentru signature patterns
@@ -81,4 +81,5 @@ struct ValidationResult {
 };
 
 } // namespace Validation
-} // namespace VolkDMA
+} // namespace ArgoSentry
+

@@ -1,10 +1,10 @@
-#include "include/VolkDMA/validators.hh"
+#include "include/ArgoSentry/validators.hh"
 
 #include <cctype>
 #include <algorithm>
 #include <sstream>
 
-namespace VolkDMA {
+namespace ArgoSentry {
 namespace Validation {
 
 // ============================================================================
@@ -240,4 +240,6 @@ bool ProcessValidator::is_system_process(DWORD pid) {
 }
 
 } // namespace Validation
-} // namespace VolkDMA
+} // namespace ArgoSentry
+
+
