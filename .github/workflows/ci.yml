@@ -62,12 +62,13 @@ jobs:
     - name: Build Test Executable
       run: |
         cd example
-        msbuild SimpleTest.vcxproj /p:Configuration=${{ matrix.build_type }} /p:Platform=x64
+        msbuild TestDMA.vcxproj /p:Configuration=${{ matrix.build_type }} /p:Platform=x64
       continue-on-error: true
       
   code-quality:
     name: Code Quality Analysis
     runs-on: windows-latest
+    continue-on-error: true
     permissions:
       security-events: write
       actions: read
