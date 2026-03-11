@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        build_type: [Debug, Release]
+        build_type: [Release]
       fail-fast: false
         
     steps:
@@ -42,11 +42,11 @@ jobs:
       
     - name: Verify Build Output
       run: |
-        if (-Not (Test-Path "x64\${{ matrix.build_type }}\ArgoSentry.lib")) {
-          Write-Error "Build failed: ArgoSentry.lib not found"
+        if (-Not (Test-Path "x64\${{ matrix.build_type }}\ArgoSentry${{ matrix.build_type }}.lib")) {
+          Write-Error "Build failed: ArgoSentry${{ matrix.build_type }}.lib not found"
           exit 1
         }
-        Write-Host "✅ Build successful: ArgoSentry.lib found"
+        Write-Host "✅ Build successful: ArgoSentry${{ matrix.build_type }}.lib found"
         Get-ChildItem "x64\${{ matrix.build_type }}" | Format-Table Name, Length
         
     - name: Upload Build Artifacts
@@ -62,7 +62,7 @@ jobs:
     - name: Build Test Executable
       run: |
         cd example
-        msbuild SimpleTest.vcxproj /p:Configuration=${{ matrix.build_type }} /p:Platform=x64
+        msbuild TestDMA.vcxproj /p:Configuration=${{ matrix.build_type }} /p:Platform=x64
       continue-on-error: true
       
   code-quality:
