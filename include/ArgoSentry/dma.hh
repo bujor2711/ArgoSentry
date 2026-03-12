@@ -59,6 +59,10 @@ namespace ArgoSentry {
     class ValueFreezer;
     struct ValueFreezerStats;
 
+    // Enhanced Pattern Scanner (v3.1 - RE Tools)
+    class EnhancedPatternScanner;
+    struct PatternScanStats;
+
     // Builder pattern (v2.2)
     class DMABuilder;
 
@@ -235,6 +239,11 @@ public:
     void destroy_value_freezer(DWORD process_id);
     [[nodiscard]] ValueFreezer* get_value_freezer(DWORD process_id) noexcept;
 
+    // Enhanced Pattern Scanner (v3.1 - RE Tools)
+    [[nodiscard]] EnhancedPatternScanner* create_pattern_scanner(DWORD process_id);
+    void destroy_pattern_scanner(DWORD process_id);
+    [[nodiscard]] EnhancedPatternScanner* get_pattern_scanner(DWORD process_id) noexcept;
+
 private:
     bool dump_memory_map();
     bool clean_fpga();
@@ -275,6 +284,10 @@ private:
     // Value freezers (v3.1 - RE Tools) - one per process
     std::map<DWORD, std::unique_ptr<ValueFreezer>> value_freezers_;
     mutable std::mutex value_freezers_mutex_;
+
+    // Enhanced pattern scanners (v3.1 - RE Tools) - one per process
+    std::map<DWORD, std::unique_ptr<EnhancedPatternScanner>> pattern_scanners_;
+    mutable std::mutex pattern_scanners_mutex_;
 
     // Logger (v2.9)
     std::shared_ptr<Logger> logger_;

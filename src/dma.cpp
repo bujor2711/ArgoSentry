@@ -18,6 +18,7 @@
 #include "ArgoSentry/self_healing.hh"  // v3.0 - Self-healing system
 #include "ArgoSentry/pointer_chain.hh"  // v3.1 - Pointer chain resolver (RE Tools)
 #include "ArgoSentry/value_freezer.hh"  // v3.1 - Value freezer (RE Tools)
+#include "ArgoSentry/pattern_scanner_enhanced.hh"  // v3.1 - Enhanced pattern scanner (RE Tools)
 
 #define NOMINMAX
 #include <Windows.h>
@@ -1165,6 +1166,40 @@ ValueFreezer* DMA::get_value_freezer(DWORD process_id) noexcept {
     std::lock_guard<std::mutex> lock(value_freezers_mutex_);
     auto it = value_freezers_.find(process_id);
     if (it != value_freezers_.end()) {
+        return it->second.get();
+    }
+    return nullptr;
+}
+
+//==============================================================================
+// Enhanced Pattern Scanner (v3.1 - RE Tools)
+//==============================================================================
+
+EnhancedPatternScanner* DMA::create_pattern_scanner(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(pattern_scanners_mutex_);
+
+    // Check if already exists
+    if (pattern_scanners_.find(process_id) != pattern_scanners_.end()) {
+        return pattern_scanners_[process_id].get();
+    }
+
+    // Create new scanner
+    auto scanner = std::make_unique<EnhancedPatternScanner>(this, process_id);
+    auto* ptr = scanner.get();
+    pattern_scanners_[process_id] = std::move(scanner);
+
+    return ptr;
+}
+
+void DMA::destroy_pattern_scanner(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(pattern_scanners_mutex_);
+    pattern_scanners_.erase(process_id);
+}
+
+EnhancedPatternScanner* DMA::get_pattern_scanner(DWORD process_id) noexcept {
+    std::lock_guard<std::mutex> lock(pattern_scanners_mutex_);
+    auto it = pattern_scanners_.find(process_id);
+    if (it != pattern_scanners_.end()) {
         return it->second.get();
     }
     return nullptr;

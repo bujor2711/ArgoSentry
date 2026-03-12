@@ -186,6 +186,11 @@ DMABuilder& DMABuilder::with_value_freezer(bool enable) {
     return *this;
 }
 
+DMABuilder& DMABuilder::with_enhanced_scanner(bool enable) {
+    enhanced_scanner_enabled_ = enable;
+    return *this;
+}
+
 std::unique_ptr<DMA> DMABuilder::build() const {
     // Validate configuration before building
     if (!is_valid()) {

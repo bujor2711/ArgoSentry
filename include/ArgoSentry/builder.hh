@@ -272,6 +272,45 @@ public:
     DMABuilder& with_value_freezer(bool enable = true);
 
     /**
+     * @brief Enable enhanced pattern scanner with IDA-style syntax
+     * @param enable Enable enhanced pattern scanner (default: true)
+     * @return Reference to this builder for chaining
+     * @since v3.1 - RE Tools
+     * 
+     * Example:
+     * @code
+     * auto dma = DMABuilder()
+     *     .with_enhanced_scanner(true)
+     *     .build();
+     * 
+     * // Create scanner for specific process
+     * auto* scanner = dma->create_pattern_scanner(pid);
+     * 
+     * // IDA-style pattern with wildcards
+     * auto results = scanner->scan_pattern(
+     *     "48 8B 05 ?? ?? ?? ??",  // MOV RAX, [RIP+??]
+     *     start_addr,
+     *     end_addr
+     * );
+     * @endcode
+     * 
+     * Enhanced scanner provides:
+     * - IDA-style pattern syntax ("48 8B 05 ?? ?? ?? ??")
+     * - Wildcard support (?? = any byte)
+     * - Multi-pattern scanning (find any of multiple patterns)
+     * - Pattern compilation and caching for performance
+     * - First-match optimization
+     * - Statistics (total scans, matches, bytes scanned)
+     * 
+     * Use cases:
+     * - Find function signatures (for hooking)
+     * - Locate game objects by vtable patterns
+     * - Search for anti-cheat patterns
+     * - Signature-based code analysis
+     */
+    DMABuilder& with_enhanced_scanner(bool enable = true);
+
+    /**
      * @brief Build DMA object with configured settings
      * @return Fully configured DMA instance (unique_ptr)
      * @throws std::runtime_error if configuration is invalid
@@ -346,6 +385,9 @@ private:
 
     // v3.1: Value freezer (RE Tools)
     bool value_freezer_enabled_{true};                  // Value freezer enabled by default
+
+    // v3.1: Enhanced pattern scanner (RE Tools)
+    bool enhanced_scanner_enabled_{true};               // Enhanced scanner enabled by default
 
     // Validation helpers
     bool validate_cache_config() const;
