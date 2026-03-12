@@ -1,6 +1,6 @@
 // ArgoSentry - Main DMA Implementation
 // Complete implementation with FPGA hardware support
-// v2.3 - Full functional implementation with Rate Limiting
+// v2.9 - Full functional implementation with Logging Framework
 
 #include "ArgoSentry/dma.hh"
 #include "ArgoSentry/validators.hh"
@@ -13,6 +13,7 @@
 #include "ArgoSentry/builder.hh"  // v2.2 - Builder pattern
 #include "ArgoSentry/rate_limiter.hh"  // v2.3 - Rate limiting
 #include "ArgoSentry/compiled_pattern.hh"  // v2.5 - Pattern compilation
+#include "ArgoSentry/logger.hh"  // v2.9 - Logging framework
 
 #define NOMINMAX
 #include <Windows.h>
@@ -32,9 +33,14 @@ namespace ArgoSentry {
 //==============================================================================
 // Constructor - Initialize DMA with FPGA hardware
 //==============================================================================
-DMA::DMA(bool use_memory_map)
+DMA::DMA(bool use_memory_map, std::shared_ptr<Logger> logger)
     : handle_(nullptr, vmm_close)  // ✅ Initialize private handle_
+    , logger_(logger)  // v2.9: Store logger
 {
+    if (logger_) {
+        LOG_INFO(logger_, "Initializing DMA with FPGA hardware...");
+    }
+
     // Initialize VMM with FPGA device
     LPCSTR args[] = {
         "",                    // argv[0] placeholder
@@ -44,18 +50,25 @@ DMA::DMA(bool use_memory_map)
     };
 
     VMM_HANDLE vmm_handle = VMMDLL_Initialize(4, args);
-    
+
     if (!vmm_handle) {
+        if (logger_) {
+            LOG_ERROR(logger_, "Failed to initialize DMA device. FPGA not connected or drivers missing.");
+        }
         throw std::runtime_error(
             "Failed to initialize DMA device. "
             "Make sure FPGA is connected and drivers are installed. "
             "Run as Administrator."
         );
     }
-    
+
     // Transfer ownership to unique_ptr
     handle_.reset(vmm_handle);
-    
+
+    if (logger_) {
+        LOG_INFO(logger_, "DMA device initialized successfully");
+    }
+
     // Initialize all subsystems
     metrics_ = std::make_unique<Metrics::MetricsCollector>();
     cache_ = std::make_unique<Cache::MemoryCache>();
@@ -69,12 +82,18 @@ DMA::DMA(bool use_memory_map)
 
     // Health monitoring is optional, not initialized by default
     health_monitor_ = nullptr;
-    
+
     // Optionally load memory map
     if (use_memory_map) {
+        if (logger_) {
+            LOG_DEBUG(logger_, "Loading memory map...");
+        }
         dump_memory_map();
     }
-    
+
+    if (logger_) {
+        LOG_INFO(logger_, "All DMA subsystems initialized successfully");
+    }
     std::cout << "[VolkDMA] Successfully initialized with FPGA hardware\n";
 }
 
@@ -105,7 +124,14 @@ DMABuilder DMA::Builder() {
 //==============================================================================
 DWORD DMA::get_process_id(const std::string& process_name) const {
     if (process_name.empty()) {
+        if (logger_) {
+            LOG_WARN(logger_, "get_process_id called with empty process name");
+        }
         throw std::invalid_argument("Process name cannot be empty");
+    }
+
+    if (logger_) {
+        LOG_INFO(logger_, "Searching for process: " + process_name);
     }
 
     // Record process lookup
@@ -115,11 +141,17 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
     SIZE_T pid_count = 0;
 
     if (!VMMDLL_PidList(handle_.get(), nullptr, &pid_count)) {
+        if (logger_) {
+            LOG_ERROR(logger_, "Failed to get process list from DMA device");
+        }
         metrics_->record_process_lookup(false);
         return 0;
     }
 
     if (pid_count == 0) {
+        if (logger_) {
+            LOG_WARN(logger_, "No processes found on target system");
+        }
         metrics_->record_process_lookup(false);
         return 0;
     }
@@ -127,6 +159,9 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
     // ✅ Use unique_ptr for automatic cleanup (RAII)
     auto pid_list = std::make_unique<DWORD[]>(pid_count);
     if (!VMMDLL_PidList(handle_.get(), pid_list.get(), &pid_count)) {
+        if (logger_) {
+            LOG_ERROR(logger_, "Failed to retrieve process list");
+        }
         metrics_->record_process_lookup(false);
         return 0;  // ✅ unique_ptr automatically frees memory
     }
@@ -158,6 +193,16 @@ DWORD DMA::get_process_id(const std::string& process_name) const {
     // ✅ No manual delete[] needed - RAII handles it
 
     metrics_->record_process_lookup(found_pid != 0);
+
+    if (found_pid != 0) {
+        if (logger_) {
+            LOG_INFO(logger_, "Process found: " + process_name + " (PID: " + std::to_string(found_pid) + ")");
+        }
+    } else {
+        if (logger_) {
+            LOG_WARN(logger_, "Process not found: " + process_name);
+        }
+    }
 
     return found_pid;
 }
@@ -222,12 +267,30 @@ T DMA::read(uint64_t address, DWORD process_id) const {
     static_assert(!std::is_pointer<T>::value, 
                   "T cannot be a pointer type");
 
+    // ✅ Log entry: address, size, PID (v2.9)
+    if (logger_) {
+        std::stringstream ss;
+        ss << "Reading " << sizeof(T) << " bytes from 0x" 
+           << std::hex << address << std::dec 
+           << " (PID " << process_id << ")";
+        LOG_DEBUG(logger_, ss.str());
+    }
+
     // Validate inputs
     if (!Validation::ProcessValidator::is_valid_process_id(process_id)) {
+        if (logger_) {
+            LOG_ERROR(logger_, "Invalid process ID: " + std::to_string(process_id));
+        }
         throw std::invalid_argument("Invalid process ID");
     }
 
     if (!Validation::MemoryRangeValidator::is_safe_range(address, sizeof(T))) {
+        if (logger_) {
+            std::stringstream ss;
+            ss << "Invalid memory range: 0x" << std::hex << address << std::dec 
+               << ", size " << sizeof(T);
+            LOG_ERROR(logger_, ss.str());
+        }
         throw std::invalid_argument("Invalid memory address or size");
     }
 
@@ -250,6 +313,15 @@ T DMA::read(uint64_t address, DWORD process_id) const {
 
             metrics_->record_read(sizeof(T), duration.count(), true);
             metrics_->record_cache_hit();
+
+            // ✅ Log cache hit (v2.9)
+            if (logger_) {
+                std::stringstream ss;
+                ss << "Cache hit: Read " << sizeof(T) << " bytes from 0x" 
+                   << std::hex << address << std::dec 
+                   << " (" << duration.count() << " μs)";
+                LOG_DEBUG(logger_, ss.str());
+            }
 
             return value;
         }
@@ -276,33 +348,77 @@ T DMA::read(uint64_t address, DWORD process_id) const {
     // ✅ Explicit null/partial read checks for safety
     if (!success) {
         metrics_->record_read(bytes_read, duration.count(), false);
+
+        // ✅ Log DMA read failure (v2.9)
+        if (logger_) {
+            std::stringstream ss;
+            ss << "DMA read failed at 0x" << std::hex << address << std::dec 
+               << " (size: " << sizeof(T) << ", PID: " << process_id << ")";
+            LOG_ERROR(logger_, ss.str());
+        }
+
         throw std::runtime_error("DMA read failed at address 0x" + 
                                  std::to_string(address) + " - VMMDLL_MemReadEx returned failure");
     }
 
     if (bytes_read == 0) {
         metrics_->record_read(0, duration.count(), false);
+
+        // ✅ Log zero bytes read (v2.9)
+        if (logger_) {
+            std::stringstream ss;
+            ss << "Zero bytes read at 0x" << std::hex << address << std::dec 
+               << " (PID: " << process_id << ") - possible invalid address or permissions";
+            LOG_ERROR(logger_, ss.str());
+        }
+
         throw std::runtime_error("DMA read returned zero bytes at address 0x" + 
                                  std::to_string(address) + " - possible invalid address or permissions");
     }
 
     if (bytes_read != sizeof(T)) {
         metrics_->record_read(bytes_read, duration.count(), false);
+
+        // ✅ Log partial read (v2.9)
+        if (logger_) {
+            std::stringstream ss;
+            ss << "Partial read at 0x" << std::hex << address << std::dec 
+               << " (expected " << sizeof(T) << ", got " << bytes_read << ", PID: " << process_id << ")";
+            LOG_WARN(logger_, ss.str());
+        }
+
         throw std::runtime_error("Partial DMA read at address 0x" + 
                                  std::to_string(address) + 
                                  " - expected " + std::to_string(sizeof(T)) + 
                                  " bytes, got " + std::to_string(bytes_read));
     }
-    
+
     // Store in cache
     if (cache_) {
         std::vector<uint8_t> data(sizeof(T));
         std::memcpy(data.data(), &value, sizeof(T));
         cache_->put(address, data);
     }
-    
+
     metrics_->record_read(sizeof(T), duration.count(), true);
-    
+
+    // ✅ Log successful DMA read (v2.9)
+    if (logger_) {
+        std::stringstream ss;
+        ss << "DMA read successful: " << sizeof(T) << " bytes from 0x" 
+           << std::hex << address << std::dec 
+           << " (" << duration.count() << " μs)";
+        LOG_DEBUG(logger_, ss.str());
+
+        // ✅ Performance warning for slow reads >100ms (v2.9)
+        if (duration.count() > 100000) { // >100ms = 100,000 microseconds
+            std::stringstream warn_ss;
+            warn_ss << "Slow read detected: " << (duration.count() / 1000) 
+                   << " ms at 0x" << std::hex << address << std::dec;
+            LOG_WARN(logger_, warn_ss.str());
+        }
+    }
+
     return value;
 }
 
@@ -366,13 +482,33 @@ static bool match_pattern(const uint8_t* buffer, size_t buffer_size,
 uint64_t DMA::find_signature(const char* signature, uint64_t range_start, 
                               uint64_t range_end, DWORD process_id) const {
     if (!signature || range_start >= range_end) {
+        if (logger_) {
+            std::stringstream ss;
+            ss << "Invalid signature scan parameters: signature=" 
+               << (signature ? signature : "NULL")
+               << ", range=0x" << std::hex << range_start << "-0x" << range_end << std::dec;
+            LOG_ERROR(logger_, ss.str());
+        }
         throw std::invalid_argument("Invalid signature or range");
     }
-    
+
     if (!Validation::ProcessValidator::is_valid_process_id(process_id)) {
+        if (logger_) {
+            LOG_ERROR(logger_, "Invalid process ID: " + std::to_string(process_id));
+        }
         throw std::invalid_argument("Invalid process ID");
     }
-    
+
+    // ✅ Log scan start (v2.9)
+    if (logger_) {
+        std::stringstream ss;
+        ss << "Scanning for pattern: " << signature 
+           << " in range 0x" << std::hex << range_start << "-0x" << range_end << std::dec
+           << " (PID " << process_id << ", size " 
+           << ((range_end - range_start) / 1024 / 1024) << " MB)";
+        LOG_INFO(logger_, ss.str());
+    }
+
     auto start_time = std::chrono::high_resolution_clock::now();
     
     // Parse signature
@@ -427,8 +563,32 @@ uint64_t DMA::find_signature(const char* signature, uint64_t range_start,
     
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-    
+
     metrics_->record_scan(total_scanned, duration.count(), found_address != 0);
+
+    // ✅ Log scan result (v2.9)
+    if (logger_) {
+        if (found_address != 0) {
+            std::stringstream ss;
+            ss << "Pattern found at 0x" << std::hex << found_address << std::dec
+               << " (" << (duration.count() / 1000) << " ms, " 
+               << (total_scanned / 1024 / 1024) << " MB scanned)";
+            LOG_INFO(logger_, ss.str());
+        } else {
+            std::stringstream ss;
+            ss << "Pattern not found (" << (duration.count() / 1000) << " ms, "
+               << (total_scanned / 1024 / 1024) << " MB scanned)";
+            LOG_DEBUG(logger_, ss.str());
+        }
+
+        // ✅ Performance warning for slow scans >100ms (v2.9)
+        if (duration.count() > 100000) { // >100ms
+            std::stringstream warn_ss;
+            warn_ss << "Slow signature scan: " << (duration.count() / 1000) 
+                   << " ms (range: 0x" << std::hex << range_start << "-0x" << range_end << std::dec << ")";
+            LOG_WARN(logger_, warn_ss.str());
+        }
+    }
 
     return found_address;
 }
@@ -437,11 +597,29 @@ uint64_t DMA::find_signature(const char* signature, uint64_t range_start,
 uint64_t DMA::find_signature(const CompiledPattern& pattern, uint64_t range_start, 
                               uint64_t range_end, DWORD process_id) const {
     if (range_start >= range_end) {
+        if (logger_) {
+            std::stringstream ss;
+            ss << "Invalid range: 0x" << std::hex << range_start << " >= 0x" << range_end << std::dec;
+            LOG_ERROR(logger_, ss.str());
+        }
         throw std::invalid_argument("Invalid range: start >= end");
     }
 
     if (!Validation::ProcessValidator::is_valid_process_id(process_id)) {
+        if (logger_) {
+            LOG_ERROR(logger_, "Invalid process ID: " + std::to_string(process_id));
+        }
         throw std::invalid_argument("Invalid process ID");
+    }
+
+    // ✅ Log scan start with compiled pattern (v2.9)
+    if (logger_) {
+        std::stringstream ss;
+        ss << "Scanning for compiled pattern: " << pattern.to_string()
+           << " in range 0x" << std::hex << range_start << "-0x" << range_end << std::dec
+           << " (PID " << process_id << ", size " 
+           << ((range_end - range_start) / 1024 / 1024) << " MB)";
+        LOG_INFO(logger_, ss.str());
     }
 
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -489,6 +667,30 @@ uint64_t DMA::find_signature(const CompiledPattern& pattern, uint64_t range_star
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
 
     metrics_->record_scan(total_scanned, duration.count(), found_address != 0);
+
+    // ✅ Log compiled pattern scan result (v2.9)
+    if (logger_) {
+        if (found_address != 0) {
+            std::stringstream ss;
+            ss << "Compiled pattern found at 0x" << std::hex << found_address << std::dec
+               << " (" << (duration.count() / 1000) << " ms, " 
+               << (total_scanned / 1024 / 1024) << " MB scanned)";
+            LOG_INFO(logger_, ss.str());
+        } else {
+            std::stringstream ss;
+            ss << "Compiled pattern not found (" << (duration.count() / 1000) << " ms, "
+               << (total_scanned / 1024 / 1024) << " MB scanned)";
+            LOG_DEBUG(logger_, ss.str());
+        }
+
+        // ✅ Performance warning for slow scans >100ms (v2.9)
+        if (duration.count() > 100000) { // >100ms
+            std::stringstream warn_ss;
+            warn_ss << "Slow compiled pattern scan: " << (duration.count() / 1000) 
+                   << " ms (range: 0x" << std::hex << range_start << "-0x" << range_end << std::dec << ")";
+            LOG_WARN(logger_, warn_ss.str());
+        }
+    }
 
     return found_address;
 }

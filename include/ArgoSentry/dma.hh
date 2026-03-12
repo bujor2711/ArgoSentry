@@ -45,6 +45,9 @@ namespace ArgoSentry {
 
     // Builder pattern (v2.2)
     class DMABuilder;
+
+    // Logging framework (v2.9)
+    class Logger;
 }
 
 // DumpFormat enum (from dumper.hh)
@@ -69,7 +72,13 @@ namespace ArgoSentry {
 
 class DMA {
 public:
-    explicit DMA(bool use_memory_map = true);
+    /**
+     * @brief Construct DMA with optional logger
+     * @param use_memory_map Enable memory map (default: true)
+     * @param logger Optional logger for operations (default: nullptr)
+     * @since v2.9 - Added logger parameter
+     */
+    explicit DMA(bool use_memory_map = true, std::shared_ptr<Logger> logger = nullptr);
     ~DMA();
 
     /**
@@ -215,6 +224,9 @@ private:
 
     // Rate limiter (v2.3)
     std::unique_ptr<RateLimiter> rate_limiter_;
+
+    // Logger (v2.9)
+    std::shared_ptr<Logger> logger_;
 };
 
 // Template implementations

@@ -7,8 +7,10 @@
 
 namespace ArgoSentry {
 
-// Forward declaration
+// Forward declarations
 class DMA;
+class Logger;
+enum class LogLevel;
 
 /**
  * @brief Fluent builder interface for DMA configuration
@@ -72,11 +74,43 @@ public:
     DMABuilder& with_health_monitoring(bool enable, bool auto_start = false);
 
     /**
-     * @brief Configure logging level
+     * @brief Configure logging level (legacy int-based)
      * @param level Logging level (0=none, 1=error, 2=warning, 3=info, 4=debug)
      * @return Reference to this builder for chaining
+     * @deprecated Use with_logging(LogLevel, filepath) instead
      */
     DMABuilder& with_logging(int level);
+
+    /**
+     * @brief Configure file logging with level and path
+     * @param level Minimum log level (DEBUG, INFO, WARN, ERR, FATAL)
+     * @param filepath Path to log file (default: "argosentry.log")
+     * @return Reference to this builder for chaining
+     * @since v2.9
+     * 
+     * Example:
+     * @code
+     * auto dma = DMABuilder()
+     *     .with_logging(LogLevel::INFO, "dma.log")
+     *     .build();
+     * @endcode
+     */
+    DMABuilder& with_logging(LogLevel level, const std::string& filepath = "argosentry.log");
+
+    /**
+     * @brief Configure console logging with colors
+     * @param level Minimum log level for console output
+     * @return Reference to this builder for chaining
+     * @since v2.9
+     * 
+     * Example:
+     * @code
+     * auto dma = DMABuilder()
+     *     .with_console_logging(LogLevel::WARN)
+     *     .build();
+     * @endcode
+     */
+    DMABuilder& with_console_logging(LogLevel level);
 
     /**
      * @brief Set chunk size for signature scanning
@@ -156,10 +190,18 @@ private:
     bool enable_metrics_;
     bool enable_health_monitoring_;
     bool auto_start_health_monitoring_;
-    int logging_level_;
+    int logging_level_;  // Legacy int-based logging
     size_t scan_chunk_size_;
     size_t max_read_size_;
     size_t rate_limit_bytes_per_sec_;  // v2.3: Rate limiting
+
+    // v2.9: Logging framework members
+    std::shared_ptr<Logger> logger_;        // Logger instance
+    bool file_logging_enabled_{false};      // File logging flag
+    bool console_logging_enabled_{false};   // Console logging flag
+    LogLevel log_level_;                    // File log level
+    LogLevel console_log_level_;            // Console log level
+    std::string log_filepath_;              // Log file path
 
     // Validation helpers
     bool validate_cache_config() const;

@@ -1,5 +1,7 @@
 #include "ArgoSentry/builder.hh"
 #include "ArgoSentry/dma.hh"
+#include "ArgoSentry/logger.hh"
+#include "ArgoSentry/log_sinks.hh"
 #include <stdexcept>
 #include <sstream>
 
@@ -14,10 +16,16 @@ DMABuilder::DMABuilder()
     , enable_metrics_(false)
     , enable_health_monitoring_(false)
     , auto_start_health_monitoring_(false)
-    , logging_level_(2)  // Warning level
+    , logging_level_(2)  // Warning level (legacy)
     , scan_chunk_size_(1 * 1024 * 1024)  // 1MB chunks
     , max_read_size_(10 * 1024 * 1024)  // 10MB max
     , rate_limit_bytes_per_sec_(0)  // v2.3: Unlimited by default
+    , logger_(nullptr)  // v2.9: No logger by default
+    , file_logging_enabled_(false)
+    , console_logging_enabled_(false)
+    , log_level_(LogLevel::INFO)
+    , console_log_level_(LogLevel::WARN)
+    , log_filepath_("argosentry.log")
 {
 }
 
@@ -62,6 +70,46 @@ DMABuilder& DMABuilder::with_logging(int level) {
     return *this;
 }
 
+DMABuilder& DMABuilder::with_logging(LogLevel level, const std::string& filepath) {
+    file_logging_enabled_ = true;
+    log_level_ = level;
+    log_filepath_ = filepath;
+
+    // Create logger if not exists
+    if (!logger_) {
+        logger_ = Logger::create();
+    }
+
+    // Add file sink with size-based rotation (10MB, keep 5 files)
+    logger_->add_sink(std::make_unique<FileSink>(
+        filepath,
+        level,
+        FileSink::RotationPolicy::SIZE,
+        10 * 1024 * 1024,  // 10MB rotation
+        5                   // Keep 5 files
+    ));
+
+    return *this;
+}
+
+DMABuilder& DMABuilder::with_console_logging(LogLevel level) {
+    console_logging_enabled_ = true;
+    console_log_level_ = level;
+
+    // Create logger if not exists
+    if (!logger_) {
+        logger_ = Logger::create();
+    }
+
+    // Add console sink with colors enabled
+    logger_->add_sink(std::make_unique<ConsoleSink>(
+        level,
+        true  // Colors enabled
+    ));
+
+    return *this;
+}
+
 DMABuilder& DMABuilder::with_scan_chunk_size(size_t chunk_size) {
     if (chunk_size < 4096) {
         throw std::invalid_argument("Scan chunk size must be at least 4KB");
@@ -95,8 +143,8 @@ std::unique_ptr<DMA> DMABuilder::build() const {
         throw std::runtime_error("Invalid DMA configuration: " + get_validation_error());
     }
 
-    // Create DMA instance with memory map setting
-    auto dma = std::make_unique<DMA>(use_memory_map_);
+    // Create DMA instance with memory map setting and logger
+    auto dma = std::make_unique<DMA>(use_memory_map_, logger_);
 
     // Configure cache
     if (cache_size_ > 0) {
