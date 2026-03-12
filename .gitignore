@@ -475,3 +475,9 @@ commit_message.txt
 *_SUMMARY.md
 *_NOTES.md
 *_STATUS_*.md
+
+# Utility scripts and temporary files
+add_*.py
+commit_*.txt
+*.pyc
+__pycache__/
