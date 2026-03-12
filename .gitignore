@@ -53,7 +53,7 @@ nunit-*.xml
 commit_msg_*.txt
 release_*.txt
 GITHUB_RELEASE_INSTRUCTIONS.md
-RELEASE_NOTES_*.md
+# RELEASE_NOTES_*.md  (commented out - allow official release notes)
 
 # ArgoSentry - Helper scripts (build locally, don't commit)
 create_release_package.ps1
