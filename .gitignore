@@ -461,3 +461,17 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Internal documentation (not for public repo)
+*PHASE*.md
+*TEST18*.md
+*RUN_TEST*.md
+*VALIDATION*.md
+validate_*.ps1
+commit_message.txt
+*_COMPLETE.md
+*_COMMIT.md
+*_FIXED.md
+*_SUMMARY.md
+*_NOTES.md
+*_STATUS_*.md
