@@ -16,6 +16,7 @@
 #include "ArgoSentry/logger.hh"  // v2.9 - Logging framework
 #include "ArgoSentry/circuit_breaker.hh"  // v3.0 - Circuit breaker pattern
 #include "ArgoSentry/self_healing.hh"  // v3.0 - Self-healing system
+#include "ArgoSentry/pointer_chain.hh"  // v3.1 - Pointer chain resolver (RE Tools)
 
 #define NOMINMAX
 #include <Windows.h>
@@ -154,6 +155,9 @@ DMA::DMA(bool use_memory_map, std::shared_ptr<Logger> logger)
     };
 
     self_healing_ = std::make_unique<SelfHealing>(sh_config, circuit_breaker_.get());
+
+    // Initialize pointer chain manager (v3.1 - RE Tools)
+    pointer_chain_manager_ = std::make_unique<PointerChainManager>();
 
     if (logger_) {
         LOG_INFO(logger_, "All DMA subsystems initialized successfully");
@@ -1117,6 +1121,18 @@ void DMA::reset_self_healing_stats() {
     if (self_healing_) {
         self_healing_->reset_stats();
     }
+}
+
+//==============================================================================
+// Pointer Chain Resolver (v3.1 - RE Tools)
+//==============================================================================
+
+PointerChainManager* DMA::get_pointer_chain_manager() noexcept {
+    return pointer_chain_manager_.get();
+}
+
+const PointerChainManager* DMA::get_pointer_chain_manager() const noexcept {
+    return pointer_chain_manager_.get();
 }
 
 } // namespace ArgoSentry

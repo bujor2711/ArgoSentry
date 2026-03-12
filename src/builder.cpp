@@ -176,6 +176,11 @@ DMABuilder& DMABuilder::with_self_healing(
     return *this;
 }
 
+DMABuilder& DMABuilder::with_pointer_resolver(bool enable) {
+    pointer_resolver_enabled_ = enable;
+    return *this;
+}
+
 std::unique_ptr<DMA> DMABuilder::build() const {
     // Validate configuration before building
     if (!is_valid()) {

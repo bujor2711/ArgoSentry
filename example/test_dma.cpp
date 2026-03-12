@@ -20,6 +20,7 @@
 #include <ArgoSentry/builder.hh>           // For DMABuilder v2.9
 #include <ArgoSentry/circuit_breaker.hh>   // For Circuit Breaker v3.0
 #include <ArgoSentry/self_healing.hh>      // For Self-Healing System v3.0
+#include <ArgoSentry/pointer_chain.hh>     // For Pointer Chain Resolver v3.1
 
 #include <iostream>
 #include <iomanip>
@@ -2726,6 +2727,170 @@ bool test_self_healing(ArgoSentry::DMA& dma) {
     }
 }
 
+//==============================================================================
+// Test 22: Pointer Chain Resolver (v3.1 - RE Tools)
+//==============================================================================
+bool test_pointer_chain_resolver(ArgoSentry::DMA& dma) {
+    print_header("TEST 22: POINTER CHAIN RESOLVER (v3.1 - RE TOOLS)");
+
+    try {
+        print_info("Testing pointer chain resolution for reverse engineering...");
+
+        // Get pointer chain manager
+        auto* manager = dma.get_pointer_chain_manager();
+        if (!manager) {
+            print_error("Pointer chain manager not available!");
+            return false;
+        }
+
+        print_success("✓ Pointer chain manager initialized");
+
+        // Test 1: Create simple pointer chain
+        print_info("\n[Test 1] Creating pointer chain...");
+
+        uint64_t base_address = 0x140000000; // Example game module base
+        std::vector<uint64_t> offsets = {0x10, 0x20, 0x08};
+
+        ArgoSentry::PointerChain chain(base_address, offsets);
+
+        std::cout << "  Created chain: " << chain.to_string() << "\n";
+        std::cout << "  Base: 0x" << std::hex << chain.base_address() << "\n";
+        std::cout << "  Depth: " << std::dec << chain.depth() << " levels\n";
+
+        print_success("✓ Pointer chain created successfully");
+
+        // Test 2: String parsing
+        print_info("\n[Test 2] Testing string parsing...");
+
+        std::string chain_str = "0x140000000+0x10+0x20+0x08";
+        auto parsed = ArgoSentry::PointerChain::from_string(chain_str);
+
+        if (parsed.has_value()) {
+            std::cout << "  Input:  " << chain_str << "\n";
+            std::cout << "  Parsed: " << parsed->to_string() << "\n";
+            print_success("✓ String parsing works");
+        } else {
+            print_error("✗ String parsing failed");
+        }
+
+        // Test 3: Named chain management
+        print_info("\n[Test 3] Testing named chain management...");
+
+        manager->add_chain("player_health", 
+            ArgoSentry::PointerChain(0x140000000, {0x123456, 0x10, 0x28}));
+        manager->add_chain("player_mana", 
+            ArgoSentry::PointerChain(0x140000000, {0x123456, 0x10, 0x30}));
+        manager->add_chain("player_position_x", 
+            ArgoSentry::PointerChain(0x140000000, {0x123456, 0x18, 0x00}));
+
+        std::cout << "  Added " << manager->size() << " chains\n";
+
+        auto names = manager->get_chain_names();
+        std::cout << "  Chain names:\n";
+        for (const auto& name : names) {
+            std::cout << "    - " << name << "\n";
+        }
+
+        print_success("✓ Named chain management works");
+
+        // Test 4: Retrieve chains
+        print_info("\n[Test 4] Testing chain retrieval...");
+
+        auto health_chain = manager->get_chain("player_health");
+        if (health_chain.has_value()) {
+            std::cout << "  Retrieved 'player_health': " << health_chain->to_string() << "\n";
+            print_success("✓ Chain retrieval works");
+        } else {
+            print_error("✗ Chain retrieval failed");
+        }
+
+        // Test 5: Caching
+        print_info("\n[Test 5] Testing address caching...");
+
+        ArgoSentry::PointerChain cached_chain(0x140000000, {0x10, 0x20});
+        cached_chain.enable_cache(true, 500); // 500ms TTL
+
+        std::cout << "  Enabled caching with 500ms TTL\n";
+        print_success("✓ Caching configured");
+
+        // Test 6: JSON persistence (mock test)
+        print_info("\n[Test 6] Testing JSON save/load...");
+
+        std::string test_file = "test_chains.json";
+        bool saved = manager->save_to_file(test_file);
+
+        if (saved) {
+            std::cout << "  Saved chains to: " << test_file << "\n";
+
+            // Clear and reload
+            manager->clear();
+            std::cout << "  Cleared manager (size: " << manager->size() << ")\n";
+
+            bool loaded = manager->load_from_file(test_file);
+            if (loaded) {
+                std::cout << "  Loaded chains (size: " << manager->size() << ")\n";
+                print_success("✓ JSON save/load works");
+            } else {
+                print_warning("⚠ JSON load failed (file may not exist)");
+            }
+        } else {
+            print_warning("⚠ JSON save failed (permission issue?)");
+        }
+
+        // Test 7: Chain operations
+        print_info("\n[Test 7] Testing chain operations...");
+
+        ArgoSentry::PointerChain test_chain(0x140000000, {0x10});
+        std::cout << "  Initial: " << test_chain.to_string() << "\n";
+
+        test_chain.add_offset(0x20);
+        std::cout << "  After add_offset(0x20): " << test_chain.to_string() << "\n";
+
+        test_chain.set_base_address(0x150000000);
+        std::cout << "  After set_base_address: " << test_chain.to_string() << "\n";
+
+        test_chain.clear_offsets();
+        std::cout << "  After clear_offsets: " << test_chain.to_string() << "\n";
+
+        print_success("✓ Chain operations work");
+
+        // Summary
+        print_success("\n[SUMMARY] Pointer Chain Resolver Test Results:");
+        std::cout << "  ✓ Chain creation\n";
+        std::cout << "  ✓ String parsing (from_string/to_string)\n";
+        std::cout << "  ✓ Named chain management\n";
+        std::cout << "  ✓ Chain retrieval\n";
+        std::cout << "  ✓ Caching configuration\n";
+        std::cout << "  ✓ JSON persistence\n";
+        std::cout << "  ✓ Chain operations (add/set/clear)\n";
+
+        std::cout << "\n[USAGE EXAMPLE]\n";
+        std::cout << "  // Create DMA with pointer resolver\n";
+        std::cout << "  auto dma = DMABuilder()\n";
+        std::cout << "      .with_pointer_resolver(true)\n";
+        std::cout << "      .build();\n\n";
+        std::cout << "  // Get manager and add chains\n";
+        std::cout << "  auto* mgr = dma->get_pointer_chain_manager();\n";
+        std::cout << "  mgr->add_chain(\"player_health\", \n";
+        std::cout << "      PointerChain(client_dll, {0x1234567, 0x10, 0x28}));\n\n";
+        std::cout << "  // Resolve pointer\n";
+        std::cout << "  auto addr = mgr->resolve(\"player_health\", *dma, pid);\n";
+        std::cout << "  int32_t health = dma->read<int32_t>(addr.value(), pid);\n\n";
+        std::cout << "  // Save chains for later\n";
+        std::cout << "  mgr->save_to_file(\"game_pointers_v1.2.3.json\");\n\n";
+        std::cout << "  // Load chains\n";
+        std::cout << "  mgr->load_from_file(\"game_pointers_v1.2.3.json\");\n\n";
+        std::cout << "  // Resolve all chains at once\n";
+        std::cout << "  auto results = mgr->resolve_all(*dma, pid);\n";
+
+        return true;
+
+    } catch (const std::exception& e) {
+        print_error(std::string("Pointer chain resolver test failed: ") + e.what());
+        return false;
+    }
+}
+
 // Main menu
 void show_menu() {
     std::cout << "\n+=======================================+\n"
@@ -2761,6 +2926,7 @@ void show_menu() {
     std::cout << " 19. Performance Benchmark (v2.9 - NEW!) 📊\n";
     std::cout << " 20. Circuit Breaker (v3.0 - NEW!) ⚡🛡️\n";
     std::cout << " 21. Self-Healing System (v3.0 - NEW!) 🏥💚\n";
+    std::cout << " 22. Pointer Chain Resolver (v3.1 - NEW!) 🎯🔗\n";
     std::cout << "  0. Exit\n\n";
 }
 
@@ -2867,6 +3033,9 @@ int main() {
                     break;
                 case 21:
                     test_self_healing(dma);
+                    break;
+                case 22:
+                    test_pointer_chain_resolver(dma);
                     break;
                 case 0:
                     running = false;

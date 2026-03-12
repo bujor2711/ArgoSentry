@@ -206,6 +206,37 @@ public:
     );
 
     /**
+     * @brief Enable pointer chain resolver for reverse engineering
+     * @param enable Enable pointer chain resolution (default: true)
+     * @return Reference to this builder for chaining
+     * @since v3.1 - RE Tools
+     * 
+     * Example:
+     * @code
+     * auto dma = DMABuilder()
+     *     .with_pointer_resolver(true)
+     *     .build();
+     * 
+     * auto* manager = dma->get_pointer_chain_manager();
+     * manager->add_chain("player_health", 
+     *     PointerChain(0x140000000, {0x10, 0x20}));
+     * @endcode
+     * 
+     * Pointer chain resolver enables:
+     * - Automatic resolution of multi-level pointers
+     * - Named chain management (e.g., "player_health", "enemy_base")
+     * - Caching for performance (configurable TTL)
+     * - JSON persistence (save/load chains)
+     * - String parsing ("0x140000000+0x10+0x20")
+     * 
+     * Use cases:
+     * - Track dynamic game objects (player health, enemy positions)
+     * - Handle game updates (chains remain valid across versions)
+     * - Reverse engineering and memory analysis
+     */
+    DMABuilder& with_pointer_resolver(bool enable = true);
+
+    /**
      * @brief Build DMA object with configured settings
      * @return Fully configured DMA instance (unique_ptr)
      * @throws std::runtime_error if configuration is invalid
@@ -274,6 +305,9 @@ private:
     size_t self_healing_max_retries_{3};                // Max retry attempts
     unsigned int self_healing_initial_delay_ms_{100};   // Initial retry delay
     int self_healing_policy_{3};                        // RetryPolicy::EXPONENTIAL = 3
+
+    // v3.1: Pointer chain resolver (RE Tools)
+    bool pointer_resolver_enabled_{true};               // Pointer resolver enabled by default
 
     // Validation helpers
     bool validate_cache_config() const;

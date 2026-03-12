@@ -52,6 +52,9 @@ namespace ArgoSentry {
     struct SelfHealingConfig;
     struct SelfHealingStats;
 
+    // Pointer Chain Resolver (v3.1 - RE Tools)
+    class PointerChainManager;
+
     // Builder pattern (v2.2)
     class DMABuilder;
 
@@ -219,6 +222,10 @@ public:
     [[nodiscard]] SelfHealingStats get_self_healing_stats() const;
     void reset_self_healing_stats();
 
+    // Pointer Chain Resolver (v3.1 - RE Tools)
+    [[nodiscard]] PointerChainManager* get_pointer_chain_manager() noexcept;
+    [[nodiscard]] const PointerChainManager* get_pointer_chain_manager() const noexcept;
+
 private:
     bool dump_memory_map();
     bool clean_fpga();
@@ -252,6 +259,9 @@ private:
 
     // Self-healing system (v3.0)
     std::unique_ptr<SelfHealing> self_healing_;
+
+    // Pointer chain manager (v3.1 - RE Tools)
+    std::unique_ptr<PointerChainManager> pointer_chain_manager_;
 
     // Logger (v2.9)
     std::shared_ptr<Logger> logger_;
