@@ -2,6 +2,10 @@
 // This demonstrates logging without requiring FPGA hardware
 // Compile: cl /EHsc demo_logging.cpp /I include /link ArgoSentryDebug.lib
 
+#define NOMINMAX
+#include <Windows.h>
+
+#include <ArgoSentry/dma.hh>
 #include <ArgoSentry/builder.hh>
 #include <ArgoSentry/logger.hh>
 #include <ArgoSentry/log_sinks.hh>
