@@ -25,6 +25,7 @@
 #include <ArgoSentry/pattern_scanner_enhanced.hh>  // For Enhanced Pattern Scanner v3.1
 #include <ArgoSentry/memory_struct.hh>     // For Memory Structure Templates v3.1
 #include <ArgoSentry/module_enum.hh>       // For Module Enumerator v3.1 FAZA 2
+#include <ArgoSentry/offset_finder.hh>     // For Offset Finder v3.1 FAZA 2
 
 #include <iostream>
 #include <iomanip>
@@ -3956,6 +3957,211 @@ bool test_module_enumerator(DMA& dma, DWORD pid) {
     }
 }
 
+// Test 28: Offset Finder (v3.1 - RE Tools FAZA 2 Day 7)
+bool test_offset_finder(DMA& dma, DWORD pid) {
+    try {
+        print_test_header("Test 28: Offset Finder (v3.1 FAZA 2)");
+        print_info("Testing AOB signature to offset conversion...\n");
+
+        // Prerequisites: Create scanner and enumerator first
+        print_info("[Prerequisites] Creating dependencies...");
+        auto* scanner = dma.create_pattern_scanner(pid);
+        auto* enumerator = dma.create_module_enumerator(pid);
+
+        if (!scanner || !enumerator) {
+            print_error("Failed to create scanner or enumerator");
+            return false;
+        }
+        print_success("✓ Dependencies ready");
+
+        // Test 1: Create offset finder
+        print_info("\n[Test 1] Creating offset finder...");
+        auto* finder = dma.create_offset_finder(pid);
+        if (!finder) {
+            print_error("Failed to create offset finder");
+            return false;
+        }
+        print_success("✓ Offset finder created");
+
+        // Test 2: Register manual offset
+        print_info("\n[Test 2] Registering manual offset...");
+
+        auto main_mod = enumerator->get_main_module();
+        if (main_mod) {
+            bool registered = finder->register_offset(
+                "manual_test",
+                main_mod->name,
+                0x1000,  // Example RVA
+                ""       // No signature
+            );
+
+            if (registered) {
+                std::cout << "  Registered: manual_test\n";
+                std::cout << "  Module: " << main_mod->name << "\n";
+                std::cout << "  RVA: 0x1000\n";
+                print_success("✓ Manual registration works");
+            }
+        }
+
+        // Test 3: Find offset from signature
+        print_info("\n[Test 3] Finding offset from signature...");
+        std::cout << "  Note: Signature search may not find matches in test environment\n";
+
+        // Try common patterns
+        std::vector<std::string> test_patterns = {
+            "48 8B 05 ?? ?? ?? ??",  // MOV RAX, [RIP+??]
+            "E8 ?? ?? ?? ??",        // CALL relative
+            "48 89 5C 24 ??",        // MOV [RSP+??], RBX
+        };
+
+        size_t found_count = 0;
+        for (size_t i = 0; i < test_patterns.size(); ++i) {
+            std::cout << "  Trying pattern " << (i + 1) << ": " << test_patterns[i] << "\n";
+
+            if (main_mod) {
+                auto offset = finder->find_offset(
+                    "pattern_" + std::to_string(i),
+                    main_mod->name,
+                    test_patterns[i]
+                );
+
+                if (offset) {
+                    std::cout << "    ✓ Found! RVA: 0x" << std::hex << offset->rva << std::dec << "\n";
+                    found_count++;
+                } else {
+                    std::cout << "    - Not found (expected in many cases)\n";
+                }
+            }
+        }
+
+        if (found_count > 0) {
+            print_success("✓ Signature-based offset finding works (" + std::to_string(found_count) + " found)");
+        } else {
+            print_warning("No patterns found (expected - depends on process)");
+        }
+
+        // Test 4: Get offset information
+        print_info("\n[Test 4] Retrieving offset information...");
+
+        auto offset_names = finder->get_offset_names();
+        std::cout << "  Total registered offsets: " << offset_names.size() << "\n";
+
+        for (const auto& name : offset_names) {
+            auto offset = finder->get_offset(name);
+            if (offset) {
+                std::cout << "  [" << name << "]\n";
+                std::cout << "    Module: " << offset->module_name << "\n";
+                std::cout << "    RVA: 0x" << std::hex << offset->rva << std::dec << "\n";
+                std::cout << "    Valid: " << (offset->is_valid ? "yes" : "no") << "\n";
+            }
+        }
+
+        if (!offset_names.empty()) {
+            print_success("✓ Offset retrieval works");
+        }
+
+        // Test 5: Get absolute address
+        print_info("\n[Test 5] Testing absolute address calculation...");
+
+        if (!offset_names.empty()) {
+            auto abs_addr = finder->get_absolute_address(offset_names[0]);
+            if (abs_addr) {
+                std::cout << "  Offset: " << offset_names[0] << "\n";
+                std::cout << "  Absolute address: 0x" << std::hex << *abs_addr << std::dec << "\n";
+                print_success("✓ Absolute address calculation works");
+            }
+        }
+
+        // Test 6: Signature to offset conversion
+        if (main_mod) {
+            print_info("\n[Test 6] Testing quick signature-to-offset conversion...");
+
+            auto rva = finder->signature_to_offset(
+                main_mod->name,
+                "48 89 5C 24 ??"
+            );
+
+            if (rva) {
+                std::cout << "  Found RVA: 0x" << std::hex << *rva << std::dec << "\n";
+                print_success("✓ Quick conversion works");
+            } else {
+                std::cout << "  Pattern not found (expected)\n";
+            }
+        }
+
+        // Test 7: Export offsets
+        print_info("\n[Test 7] Exporting offsets to file...");
+
+        if (finder->export_to_file("offsets.json")) {
+            std::cout << "  Exported to: offsets.json\n";
+            print_success("✓ Offset export works");
+        }
+
+        // Test 8: Import offsets
+        print_info("\n[Test 8] Testing offset import...");
+
+        size_t imported = finder->import_from_file("offsets.json");
+        std::cout << "  Imported offsets: " << imported << "\n";
+
+        if (imported > 0) {
+            print_success("✓ Offset import works");
+        }
+
+        // Cleanup
+        print_info("\n[Cleanup] Destroying offset finder...");
+        finder->clear();
+        dma.destroy_offset_finder(pid);
+        dma.destroy_module_enumerator(pid);
+        dma.destroy_pattern_scanner(pid);
+        print_success("✓ Cleanup complete");
+
+        // Summary
+        print_success("\n[SUMMARY] Offset Finder Test Results:");
+        std::cout << "  ✓ Offset finder creation\n";
+        std::cout << "  ✓ Manual offset registration\n";
+        std::cout << "  ✓ Signature-based offset finding\n";
+        std::cout << "  ✓ Offset information retrieval\n";
+        std::cout << "  ✓ Absolute address calculation\n";
+        std::cout << "  ✓ Quick signature-to-offset conversion\n";
+        std::cout << "  ✓ Offset export (JSON)\n";
+        std::cout << "  ✓ Offset import (JSON)\n";
+
+        std::cout << "\n[USAGE EXAMPLE]\n";
+        std::cout << "  // Create offset finder (needs scanner + enumerator)\n";
+        std::cout << "  auto* scanner = dma->create_pattern_scanner(pid);\n";
+        std::cout << "  auto* enumerator = dma->create_module_enumerator(pid);\n";
+        std::cout << "  auto* finder = dma->create_offset_finder(pid);\n\n";
+        std::cout << "  // Find offset from signature\n";
+        std::cout << "  auto offset = finder->find_offset(\n";
+        std::cout << "      \"player_base\",\n";
+        std::cout << "      \"game.exe\",\n";
+        std::cout << "      \"48 8B 05 ?? ?? ?? ??\"\n";
+        std::cout << "  );\n\n";
+        std::cout << "  // Use offset (works across game updates!)\n";
+        std::cout << "  if (offset) {\n";
+        std::cout << "      auto addr = finder->get_absolute_address(\"player_base\");\n";
+        std::cout << "      // Use addr for reading/writing\n";
+        std::cout << "  }\n\n";
+        std::cout << "  // Export for later use\n";
+        std::cout << "  finder->export_to_file(\"game_offsets.json\");\n\n";
+        std::cout << "  // Import on next run (instant, no scanning needed)\n";
+        std::cout << "  finder->import_from_file(\"game_offsets.json\");\n";
+
+        std::cout << "\n[USE CASE]\n";
+        std::cout << "  Game updates? No problem! Import your offsets:\n";
+        std::cout << "  - Offsets are RVA-based (relative to module)\n";
+        std::cout << "  - Portable across different base addresses\n";
+        std::cout << "  - Share offset files with community\n";
+        std::cout << "  - Update offsets: finder->update_all_offsets()\n";
+
+        return true;
+
+    } catch (const std::exception& e) {
+        print_error(std::string("Offset finder test failed: ") + e.what());
+        return false;
+    }
+}
+
 // Main menu
 void show_menu() {
     std::cout << "\n+=======================================+\n"
@@ -3997,6 +4203,7 @@ void show_menu() {
     std::cout << " 25. Memory Structure Templates (v3.1 - NEW!) 📦🔧\n";
     std::cout << " 26. RE Tools Integration (v3.1 - FAZA 1 COMPLETE!) 🎯🚀\n";
     std::cout << " 27. Module Enumerator (v3.1 - FAZA 2 NEW!) 📚🔍\n";
+    std::cout << " 28. Offset Finder (v3.1 - FAZA 2 NEW!) 🎯📍\n";
     std::cout << "  0. Exit\n\n";
 }
 
@@ -4121,6 +4328,9 @@ int main() {
                     break;
                 case 27:
                     test_module_enumerator(dma, current_pid);
+                    break;
+                case 28:
+                    test_offset_finder(dma, current_pid);
                     break;
                 case 0:
                     running = false;

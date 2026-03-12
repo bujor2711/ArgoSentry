@@ -21,6 +21,7 @@
 #include "ArgoSentry/pattern_scanner_enhanced.hh"  // v3.1 - Enhanced pattern scanner (RE Tools)
 #include "ArgoSentry/memory_struct.hh"  // v3.1 - Memory structure templates (RE Tools)
 #include "ArgoSentry/module_enum.hh"  // v3.1 - Module enumerator (RE Tools FAZA 2)
+#include "ArgoSentry/offset_finder.hh"  // v3.1 - Offset finder (RE Tools FAZA 2)
 
 #define NOMINMAX
 #include <Windows.h>
@@ -1266,6 +1267,46 @@ ModuleEnumerator* DMA::get_module_enumerator(DWORD process_id) noexcept {
     std::lock_guard<std::mutex> lock(module_enumerators_mutex_);
     auto it = module_enumerators_.find(process_id);
     if (it != module_enumerators_.end()) {
+        return it->second.get();
+    }
+    return nullptr;
+}
+
+// Offset Finder (v3.1 - RE Tools FAZA 2)
+
+OffsetFinder* DMA::create_offset_finder(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(offset_finders_mutex_);
+
+    // Check if already exists
+    auto it = offset_finders_.find(process_id);
+    if (it != offset_finders_.end()) {
+        return it->second.get();
+    }
+
+    // Need scanner and enumerator
+    auto* scanner = get_pattern_scanner(process_id);
+    auto* enumerator = get_module_enumerator(process_id);
+
+    if (!scanner || !enumerator) {
+        return nullptr;  // Dependencies not available
+    }
+
+    // Create new offset finder
+    auto finder = std::make_unique<OffsetFinder>(this, scanner, enumerator, process_id);
+    auto* ptr = finder.get();
+    offset_finders_[process_id] = std::move(finder);
+    return ptr;
+}
+
+void DMA::destroy_offset_finder(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(offset_finders_mutex_);
+    offset_finders_.erase(process_id);
+}
+
+OffsetFinder* DMA::get_offset_finder(DWORD process_id) noexcept {
+    std::lock_guard<std::mutex> lock(offset_finders_mutex_);
+    auto it = offset_finders_.find(process_id);
+    if (it != offset_finders_.end()) {
         return it->second.get();
     }
     return nullptr;

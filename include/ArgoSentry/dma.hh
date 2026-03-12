@@ -70,6 +70,10 @@ namespace ArgoSentry {
     class ModuleEnumerator;
     struct ModuleInfo;
 
+    // Offset Finder (v3.1 - RE Tools FAZA 2)
+    class OffsetFinder;
+    struct OffsetInfo;
+
     // Builder pattern (v2.2)
     class DMABuilder;
 
@@ -261,6 +265,11 @@ public:
     void destroy_module_enumerator(DWORD process_id);
     [[nodiscard]] ModuleEnumerator* get_module_enumerator(DWORD process_id) noexcept;
 
+    // Offset Finder (v3.1 - RE Tools FAZA 2)
+    [[nodiscard]] OffsetFinder* create_offset_finder(DWORD process_id);
+    void destroy_offset_finder(DWORD process_id);
+    [[nodiscard]] OffsetFinder* get_offset_finder(DWORD process_id) noexcept;
+
 private:
     bool dump_memory_map();
     bool clean_fpga();
@@ -313,6 +322,10 @@ private:
     // Module enumerators (v3.1 - RE Tools FAZA 2) - one per process
     std::map<DWORD, std::unique_ptr<ModuleEnumerator>> module_enumerators_;
     mutable std::mutex module_enumerators_mutex_;
+
+    // Offset finders (v3.1 - RE Tools FAZA 2) - one per process
+    std::map<DWORD, std::unique_ptr<OffsetFinder>> offset_finders_;
+    mutable std::mutex offset_finders_mutex_;
 
     // Logger (v2.9)
     std::shared_ptr<Logger> logger_;
