@@ -47,6 +47,11 @@ namespace ArgoSentry {
     class CircuitBreaker;
     enum class CircuitState;
 
+    // Self-Healing System (v3.0)
+    class SelfHealing;
+    struct SelfHealingConfig;
+    struct SelfHealingStats;
+
     // Builder pattern (v2.2)
     class DMABuilder;
 
@@ -208,6 +213,12 @@ public:
     void trip_circuit_breaker() noexcept;
     void reset_circuit_breaker() noexcept;
 
+    // Self-Healing System (v3.0)
+    [[nodiscard]] SelfHealing* get_self_healing() noexcept;
+    [[nodiscard]] const SelfHealing* get_self_healing() const noexcept;
+    [[nodiscard]] SelfHealingStats get_self_healing_stats() const;
+    void reset_self_healing_stats();
+
 private:
     bool dump_memory_map();
     bool clean_fpga();
@@ -238,6 +249,9 @@ private:
 
     // Circuit breaker (v3.0)
     std::unique_ptr<CircuitBreaker> circuit_breaker_;
+
+    // Self-healing system (v3.0)
+    std::unique_ptr<SelfHealing> self_healing_;
 
     // Logger (v2.9)
     std::shared_ptr<Logger> logger_;

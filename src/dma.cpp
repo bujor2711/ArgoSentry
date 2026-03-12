@@ -1,6 +1,6 @@
 // ArgoSentry - Main DMA Implementation
 // Complete implementation with FPGA hardware support
-// v3.0 - Health Monitoring with Circuit Breaker Pattern
+// v3.0 - Health Monitoring with Circuit Breaker & Self-Healing
 
 #include "ArgoSentry/dma.hh"
 #include "ArgoSentry/validators.hh"
@@ -15,6 +15,7 @@
 #include "ArgoSentry/compiled_pattern.hh"  // v2.5 - Pattern compilation
 #include "ArgoSentry/logger.hh"  // v2.9 - Logging framework
 #include "ArgoSentry/circuit_breaker.hh"  // v3.0 - Circuit breaker pattern
+#include "ArgoSentry/self_healing.hh"  // v3.0 - Self-healing system
 
 #define NOMINMAX
 #include <Windows.h>
@@ -107,6 +108,52 @@ DMA::DMA(bool use_memory_map, std::shared_ptr<Logger> logger)
         }
     };
     circuit_breaker_ = std::make_unique<CircuitBreaker>(cb_config);
+
+    // Initialize self-healing system (v3.0)
+    // Default config: Exponential backoff, 3 retries, auto-reconnect enabled
+    SelfHealingConfig sh_config;
+    sh_config.retry_policy = RetryPolicy::EXPONENTIAL;
+    sh_config.max_retry_attempts = 3;
+    sh_config.initial_retry_delay = std::chrono::milliseconds(100);
+    sh_config.max_retry_delay = std::chrono::milliseconds(5000);
+    sh_config.use_circuit_breaker = true;
+    sh_config.auto_reconnect = true;
+    sh_config.enable_health_checks = true;
+
+    // Setup retry callback for logging
+    sh_config.on_retry_attempt = [this](const std::string& operation, size_t attempt, const std::error_code& error) {
+        if (logger_) {
+            std::string msg = "Self-healing retry attempt " + std::to_string(attempt) +
+                            " for '" + operation + "' (error: " + error.message() + ")";
+            LOG_WARN(logger_, msg);
+        }
+    };
+
+    sh_config.on_retry_exhausted = [this](const std::string& operation, size_t total_attempts) {
+        if (logger_) {
+            std::string msg = "Self-healing exhausted " + std::to_string(total_attempts) +
+                            " attempts for '" + operation + "' - operation failed";
+            LOG_ERROR(logger_, msg);
+        }
+    };
+
+    sh_config.on_reconnect_start = [this]() {
+        if (logger_) {
+            LOG_WARN(logger_, "Self-healing: Attempting DMA reconnection...");
+        }
+    };
+
+    sh_config.on_reconnect_complete = [this](bool success) {
+        if (logger_) {
+            if (success) {
+                LOG_INFO(logger_, "Self-healing: DMA reconnection successful");
+            } else {
+                LOG_ERROR(logger_, "Self-healing: DMA reconnection failed");
+            }
+        }
+    };
+
+    self_healing_ = std::make_unique<SelfHealing>(sh_config, circuit_breaker_.get());
 
     if (logger_) {
         LOG_INFO(logger_, "All DMA subsystems initialized successfully");
@@ -1044,6 +1091,31 @@ void DMA::trip_circuit_breaker() noexcept {
 void DMA::reset_circuit_breaker() noexcept {
     if (circuit_breaker_) {
         circuit_breaker_->reset();
+    }
+}
+
+//==============================================================================
+// Self-Healing System (v3.0)
+//==============================================================================
+
+SelfHealing* DMA::get_self_healing() noexcept {
+    return self_healing_.get();
+}
+
+const SelfHealing* DMA::get_self_healing() const noexcept {
+    return self_healing_.get();
+}
+
+SelfHealingStats DMA::get_self_healing_stats() const {
+    if (!self_healing_) {
+        return SelfHealingStats{};  // Return empty stats if not initialized
+    }
+    return self_healing_->get_stats();
+}
+
+void DMA::reset_self_healing_stats() {
+    if (self_healing_) {
+        self_healing_->reset_stats();
     }
 }
 

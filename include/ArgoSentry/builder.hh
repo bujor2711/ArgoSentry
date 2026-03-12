@@ -173,6 +173,39 @@ public:
     );
 
     /**
+     * @brief Configure self-healing system for automatic recovery
+     * @param max_retries Maximum retry attempts before giving up (default: 3)
+     * @param initial_delay_ms Initial retry delay in milliseconds (default: 100)
+     * @param policy Retry policy (EXPONENTIAL, LINEAR, FIXED, etc.) (default: EXPONENTIAL)
+     * @return Reference to this builder for chaining
+     * @since v3.0
+     * 
+     * Example:
+     * @code
+     * auto dma = DMABuilder()
+     *     .with_self_healing(5, 200, RetryPolicy::EXPONENTIAL)
+     *     .build();
+     * @endcode
+     * 
+     * Self-healing provides automatic recovery through:
+     * - Intelligent retry policies (exponential backoff recommended)
+     * - Circuit breaker integration for failure detection
+     * - Automatic reconnection to DMA device
+     * - Health monitoring and proactive recovery
+     * 
+     * Retry Policies:
+     * - EXPONENTIAL: Delay doubles each retry (recommended)
+     * - LINEAR: Delay increases linearly
+     * - FIXED: Same delay between retries
+     * - FIBONACCI: Aggressive increase
+     */
+    DMABuilder& with_self_healing(
+        size_t max_retries = 3,
+        unsigned int initial_delay_ms = 100,
+        int policy = 3  // RetryPolicy::EXPONENTIAL = 3
+    );
+
+    /**
      * @brief Build DMA object with configured settings
      * @return Fully configured DMA instance (unique_ptr)
      * @throws std::runtime_error if configuration is invalid
@@ -235,6 +268,12 @@ private:
     bool circuit_breaker_enabled_{true};                // Circuit breaker enabled by default
     size_t circuit_breaker_failure_threshold_{5};       // Failures before opening
     unsigned int circuit_breaker_timeout_seconds_{30};  // Timeout in OPEN state
+
+    // v3.0: Self-healing members
+    bool self_healing_enabled_{true};                   // Self-healing enabled by default
+    size_t self_healing_max_retries_{3};                // Max retry attempts
+    unsigned int self_healing_initial_delay_ms_{100};   // Initial retry delay
+    int self_healing_policy_{3};                        // RetryPolicy::EXPONENTIAL = 3
 
     // Validation helpers
     bool validate_cache_config() const;

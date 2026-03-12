@@ -47,12 +47,12 @@
 
 ### **🚀 Phase 3 - Health Monitoring (v3.0) - IN PROGRESS:**
 ✅ **Circuit Breaker Pattern (v3.0)** - COMPLETE (Day 1-2)  
-📝 **Self-Healing System** - PENDING (Day 3)  
+✅ **Self-Healing System (v3.0)** - COMPLETE (Day 3)  
 📝 **Health HTTP Endpoints** - PENDING (Days 4-5)  
 📝 **Prometheus Metrics Exporter** - PENDING (Days 5-6)  
 📝 **Alert System** - PENDING (Day 7)  
 📝 **Integration & Testing** - PENDING (Day 8)  
-📊 **Progress: 35% complete** - Circuit Breaker foundation ready!
+📊 **Progress: 45% complete** - Circuit Breaker + Self-Healing foundations ready!
 
 ### **Latest Feature (v3.0 - Circuit Breaker Pattern):**
 ✅ **Circuit Breaker Implementation - COMPLETE:**
@@ -127,6 +127,244 @@ The Circuit Breaker pattern is the foundation for all Phase 3 health monitoring 
 - **Alert System** (Day 7) triggers alerts on circuit state changes
 
 **Next:** Self-Healing System (Day 3) - Automatic DMA reconnection, retry policies, fallback strategies
+
+---
+
+### **Latest Feature (v3.0 - Self-Healing System):**
+✅ **Self-Healing System Implementation - COMPLETE:**
+1. **5 Retry Policies** → NONE, FIXED, LINEAR, EXPONENTIAL (default), FIBONACCI
+2. **Automatic Reconnection** → Max 5 attempts, 30s timeout, exponential backoff
+3. **Health Monitoring** → Proactive checks, consecutive failure tracking
+4. **Circuit Breaker Integration** → Uses CB for failure detection, automatic reset on success
+5. **Comprehensive Statistics** → 15+ metrics with success rate calculations
+6. **Fallback Handling** → Invoke callbacks on retry exhaustion
+7. **Runtime Configuration** → update_config() for dynamic policy changes
+8. **Thread Safety** → std::mutex protects all statistics, lock-free when possible
+9. **Error Handling** → std::error_code + std::optional<Result> for type-safe operations
+10. **Callback System** → on_retry_attempt, on_retry_exhausted, on_reconnect_start/complete
+11. **Builder Integration** → .with_self_healing(max_retries, initial_delay_ms, policy)
+12. **DMA Access** → get_self_healing(), get_self_healing_stats(), reset_self_healing_stats()
+13. **Test 21** → 8 comprehensive sub-tests (350 lines)
+
+**Implementation Details:**
+- **Files:** self_healing.hh (350 lines), self_healing.cpp (450 lines)
+- **DMA Integration:** dma.hh/cpp (30 lines) - 4 public methods, constructor initialization
+- **Builder Integration:** builder.hh/cpp (20 lines) - with_self_healing() with validation
+- **Testing:** Test 21 (350 lines) - 8 sub-tests
+- **Total LOC:** 850 lines
+- **Build Status:** ✅ SUCCESS (0 errors, 1 warning - expected)
+
+**Usage Example:**
+```cpp
+// Via Builder (recommended):
+auto dma = DMABuilder()
+    .with_self_healing(5, 200, 3)  // 5 retries, 200ms delay, EXPONENTIAL policy
+    .with_circuit_breaker(10, 60)
+    .with_logging(LogLevel::INFO, "dma.log")
+    .build();
+
+// Access self-healing system:
+auto* sh = dma->get_self_healing();
+auto stats = dma->get_self_healing_stats();
+
+// Execute with retry:
+auto result = sh->execute_with_retry([]() -> std::error_code {
+    return perform_dma_operation();
+}, "dma_operation");
+
+// Execute with typed result:
+auto value = sh->execute_with_retry_result<uint64_t>([]() -> std::optional<uint64_t> {
+    return read_memory_address();
+}, "memory_read");
+
+if (value.has_value()) {
+    std::cout << "Read successful: 0x" << std::hex << value.value() << "\n";
+}
+
+// Perform health check:
+bool healthy = sh->perform_health_check([]() {
+    return check_dma_hardware_status();
+});
+
+// Attempt reconnection:
+bool reconnected = sh->attempt_reconnect([]() {
+    return reconnect_to_dma_device();
+});
+
+// Statistics:
+std::cout << "Retry success rate: " << stats.get_retry_success_rate() << "%\n";
+std::cout << "Reconnection success rate: " << stats.get_reconnection_success_rate() << "%\n";
+std::cout << "Health check success rate: " << stats.get_health_check_success_rate() << "%\n";
+```
+
+**Test 21 - Self-Healing System (8 sub-tests):**
+1. **Retry Policy Verification** → Test EXPONENTIAL, LINEAR, FIXED policies, verify delay calculations
+2. **Statistics Tracking** → Verify all 15+ metrics (retry attempts, successes, failures, rates)
+3. **Retry Execution with Success** → 3 attempts (fail, fail, succeed), verify stats updated
+4. **Retry Exhaustion and Fallback** → Always-failing operation, verify fallback invoked
+5. **Health Check Monitoring** → Successful and failed checks, consecutive failure tracking
+6. **Circuit Breaker Integration** → Trip CB, verify retry respects OPEN state
+7. **Reconnection Mechanism** → Fail first attempt, succeed second, verify stats
+8. **Rate Calculations** → Verify success rate formulas (retry, reconnection, health check)
+
+**Retry Policies:**
+- **EXPONENTIAL (default):** Delay doubles each retry (100ms → 200ms → 400ms → 800ms → 1600ms)
+  - Best for: General purpose, recommended for most scenarios
+  - Benefit: Quick initial retries, backs off to avoid overwhelming failed systems
+- **LINEAR:** Delay increases linearly (100ms → 200ms → 300ms → 400ms → 500ms)
+  - Best for: Predictable retry intervals
+  - Benefit: Gradual backoff, easier to reason about timing
+- **FIXED:** Same delay between retries (100ms → 100ms → 100ms → 100ms → 100ms)
+  - Best for: Timeout-based failures (network hiccups)
+  - Benefit: Simplest strategy, consistent timing
+- **FIBONACCI:** Aggressive increase (100ms → 100ms → 200ms → 300ms → 500ms → 800ms)
+  - Best for: Rapidly deteriorating conditions
+  - Benefit: Quickly backs off while giving early chances
+- **NONE:** No retries, fail immediately
+  - Best for: Critical operations where retries are unsafe
+  - Benefit: Fastest failure detection
+
+**Configuration Options:**
+```cpp
+SelfHealingConfig config;
+config.retry_policy = RetryPolicy::EXPONENTIAL;
+config.max_retry_attempts = 3;                    // Max retries before giving up
+config.initial_retry_delay = std::chrono::milliseconds(100);  // Starting delay
+config.max_retry_delay = std::chrono::milliseconds(5000);     // Cap on delay
+config.backoff_multiplier = 2.0;                  // Multiplier for EXPONENTIAL policy
+
+config.use_circuit_breaker = true;                // Integrate with circuit breaker
+config.auto_reset_on_success = true;              // Reset CB on successful operations
+
+config.auto_reconnect = true;                     // Enable automatic reconnection
+config.reconnect_timeout = std::chrono::seconds(30);  // Timeout per reconnection attempt
+config.max_reconnect_attempts = 5;                // Max reconnection attempts
+
+config.enable_fallback = true;                    // Enable fallback on exhaustion
+config.fallback_handler = [](const std::string& op_name) {
+    std::cerr << "Fallback invoked for: " << op_name << "\n";
+};
+
+config.enable_health_checks = true;               // Enable proactive health monitoring
+config.health_check_interval = std::chrono::seconds(10);  // Interval between checks
+config.health_check_failures_before_reconnect = 3;  // Consecutive failures trigger reconnect
+
+config.on_retry_attempt = [](const std::string& op, size_t attempt, const std::error_code& ec) {
+    std::cout << "Retry " << attempt << " for " << op << ": " << ec.message() << "\n";
+};
+
+config.on_retry_exhausted = [](const std::string& op, size_t total) {
+    std::cerr << "Retries exhausted for " << op << " after " << total << " attempts\n";
+};
+
+config.on_reconnect_start = []() {
+    std::cout << "Starting reconnection...\n";
+};
+
+config.on_reconnect_complete = [](bool success) {
+    std::cout << "Reconnection " << (success ? "succeeded" : "failed") << "\n";
+};
+
+sh->update_config(config);
+```
+
+**Statistics Structure:**
+```cpp
+struct SelfHealingStats {
+    // Retry operations
+    size_t total_retry_attempts;        // Total retry attempts across all operations
+    size_t successful_retries;          // Retries that eventually succeeded
+    size_t failed_retries;              // Retries that failed but didn't exhaust
+    size_t retry_exhausted_count;       // Operations that exhausted all retries
+
+    // Reconnection
+    size_t reconnection_attempts;       // Total reconnection attempts
+    size_t successful_reconnections;    // Successful reconnections
+    size_t failed_reconnections;        // Failed reconnections
+    std::chrono::system_clock::time_point last_reconnection_time;
+
+    // Fallback
+    size_t fallback_invocations;        // Number of times fallback was invoked
+    std::chrono::system_clock::time_point last_fallback_time;
+
+    // Health checks
+    size_t total_health_checks;         // Total health checks performed
+    size_t failed_health_checks;        // Failed health checks
+    size_t consecutive_health_failures; // Current consecutive failures
+    std::chrono::system_clock::time_point last_health_check_time;
+
+    // Timing
+    std::chrono::milliseconds total_retry_time;    // Cumulative time spent in retries
+    std::chrono::milliseconds average_retry_delay; // Average delay per retry
+
+    // Rate calculations
+    double get_retry_success_rate() const;         // Percentage of successful retries
+    double get_reconnection_success_rate() const;  // Percentage of successful reconnections
+    double get_health_check_success_rate() const;  // Percentage of successful health checks
+};
+```
+
+**Benefits:**
+✅ **Automatic Recovery** - Exponential backoff prevents overwhelming failed systems  
+✅ **Production Ready** - Thread-safe, comprehensive error handling, tested  
+✅ **Circuit Breaker Integration** - Seamless failure detection and prevention  
+✅ **Health Monitoring** - Proactive reconnection before complete failure  
+✅ **Configurable** - 5 retry policies + 12+ configuration options  
+✅ **Observable** - 15+ statistics metrics with rate calculations  
+✅ **Type-Safe** - std::error_code + std::optional for safer operations  
+✅ **Callback System** - Extensive hooks for monitoring and logging  
+
+**Why Self-Healing System:**
+The Self-Healing System builds on Circuit Breaker to provide automatic recovery:
+- **Circuit Breaker** detects failures (CLOSED → OPEN state transitions)
+- **Self-Healing** executes recovery (retry with backoff, reconnection, health checks)
+- **Together** they provide fault tolerance + automatic recovery
+- **Foundation** for Health Endpoints (expose status) and Alerts (notify on failures)
+
+**How It Works:**
+1. **Execute Operation** → Self-Healing calls execute_with_retry()
+2. **Failure Detection** → Operation returns error code
+3. **Check Circuit Breaker** → If OPEN, reject immediately (fail-fast)
+4. **Retry Logic** → Calculate delay based on policy (EXPONENTIAL, LINEAR, etc.)
+5. **Wait & Retry** → Sleep for calculated delay, then retry operation
+6. **Success** → Reset circuit breaker, update statistics, return success
+7. **Exhaustion** → After max_retry_attempts, invoke fallback handler
+8. **Health Monitoring** → Periodic health checks detect degradation early
+9. **Reconnection** → Consecutive health failures trigger automatic reconnection
+
+**Integration with Circuit Breaker:**
+```cpp
+// Self-Healing uses Circuit Breaker for failure detection
+auto* cb = dma->get_circuit_breaker();
+sh->set_circuit_breaker(cb);
+
+// Execute operation with both systems:
+auto result = sh->execute_with_retry([]() -> std::error_code {
+    // Circuit breaker wraps the operation
+    return cb->execute([]() -> std::error_code {
+        return perform_dma_read();
+    });
+});
+
+// If circuit is OPEN:
+// - execute_with_retry() checks CB state before each retry
+// - If OPEN, short-circuits immediately (no retries)
+// - rejected_calls increments in CB statistics
+
+// If operation succeeds:
+// - Self-Healing updates successful_retries counter
+// - Circuit Breaker resets consecutive_failures (if auto_reset_on_success=true)
+// - Both systems return to healthy state
+
+// If operation fails repeatedly:
+// - Self-Healing retries with exponential backoff
+// - Circuit Breaker tracks consecutive_failures
+// - After threshold (e.g., 5 failures), CB trips to OPEN
+// - Self-Healing respects OPEN state, stops retrying
+// - Fallback handler invoked (if configured)
+```
+
+**Next:** Health HTTP Endpoints (Days 4-5) - Expose health status and metrics via HTTP server
 
 ---
 

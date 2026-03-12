@@ -16,6 +16,7 @@
     <ClInclude Include="include\ArgoSentry\batch.hh" />
     <ClInclude Include="include\ArgoSentry\cache.hh" />
     <ClInclude Include="include\ArgoSentry\circuit_breaker.hh" />
+    <ClInclude Include="include\ArgoSentry\self_healing.hh" />
     <ClInclude Include="include\ArgoSentry\compiled_pattern.hh" />
     <ClInclude Include="include\ArgoSentry\config.hh" />
     <ClInclude Include="include\ArgoSentry\builder.hh" />
@@ -52,6 +53,7 @@
     <ClCompile Include="src\batch.cpp" />
     <ClCompile Include="src\cache.cpp" />
     <ClCompile Include="src\circuit_breaker.cpp" />
+    <ClCompile Include="src\self_healing.cpp" />
     <ClCompile Include="src\compiled_pattern.cpp" />
     <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\builder.cpp" />
@@ -189,3 +191,4 @@
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
+

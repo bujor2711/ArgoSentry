@@ -154,6 +154,28 @@ DMABuilder& DMABuilder::with_circuit_breaker(
     return *this;
 }
 
+DMABuilder& DMABuilder::with_self_healing(
+    size_t max_retries,
+    unsigned int initial_delay_ms,
+    int policy
+) {
+    if (max_retries == 0) {
+        throw std::invalid_argument("Self-healing max retries must be at least 1");
+    }
+    if (initial_delay_ms == 0) {
+        throw std::invalid_argument("Self-healing initial delay must be at least 1 millisecond");
+    }
+    if (policy < 0 || policy > 4) {  // RetryPolicy enum range: NONE(0) to FIBONACCI(4)
+        throw std::invalid_argument("Invalid retry policy (must be 0-4)");
+    }
+
+    self_healing_enabled_ = true;
+    self_healing_max_retries_ = max_retries;
+    self_healing_initial_delay_ms_ = initial_delay_ms;
+    self_healing_policy_ = policy;
+    return *this;
+}
+
 std::unique_ptr<DMA> DMABuilder::build() const {
     // Validate configuration before building
     if (!is_valid()) {
