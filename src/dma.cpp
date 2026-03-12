@@ -20,6 +20,7 @@
 #include "ArgoSentry/value_freezer.hh"  // v3.1 - Value freezer (RE Tools)
 #include "ArgoSentry/pattern_scanner_enhanced.hh"  // v3.1 - Enhanced pattern scanner (RE Tools)
 #include "ArgoSentry/memory_struct.hh"  // v3.1 - Memory structure templates (RE Tools)
+#include "ArgoSentry/module_enum.hh"  // v3.1 - Module enumerator (RE Tools FAZA 2)
 
 #define NOMINMAX
 #include <Windows.h>
@@ -1233,6 +1234,38 @@ MemoryStructManager* DMA::get_struct_manager(DWORD process_id) noexcept {
     std::lock_guard<std::mutex> lock(struct_managers_mutex_);
     auto it = struct_managers_.find(process_id);
     if (it != struct_managers_.end()) {
+        return it->second.get();
+    }
+    return nullptr;
+}
+
+// Module Enumerator (v3.1 - RE Tools FAZA 2)
+
+ModuleEnumerator* DMA::create_module_enumerator(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(module_enumerators_mutex_);
+
+    // Check if already exists
+    auto it = module_enumerators_.find(process_id);
+    if (it != module_enumerators_.end()) {
+        return it->second.get();
+    }
+
+    // Create new enumerator
+    auto enumerator = std::make_unique<ModuleEnumerator>(this, process_id);
+    auto* ptr = enumerator.get();
+    module_enumerators_[process_id] = std::move(enumerator);
+    return ptr;
+}
+
+void DMA::destroy_module_enumerator(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(module_enumerators_mutex_);
+    module_enumerators_.erase(process_id);
+}
+
+ModuleEnumerator* DMA::get_module_enumerator(DWORD process_id) noexcept {
+    std::lock_guard<std::mutex> lock(module_enumerators_mutex_);
+    auto it = module_enumerators_.find(process_id);
+    if (it != module_enumerators_.end()) {
         return it->second.get();
     }
     return nullptr;

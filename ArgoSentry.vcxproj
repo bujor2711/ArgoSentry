@@ -21,6 +21,7 @@
     <ClInclude Include="include\ArgoSentry\value_freezer.hh" />
     <ClInclude Include="include\ArgoSentry\pattern_scanner_enhanced.hh" />
     <ClInclude Include="include\ArgoSentry\memory_struct.hh" />
+    <ClInclude Include="include\ArgoSentry\module_enum.hh" />
     <ClInclude Include="include\ArgoSentry\compiled_pattern.hh" />
     <ClInclude Include="include\ArgoSentry\config.hh" />
     <ClInclude Include="include\ArgoSentry\builder.hh" />
@@ -62,6 +63,7 @@
     <ClCompile Include="src\value_freezer.cpp" />
     <ClCompile Include="src\pattern_scanner_enhanced.cpp" />
     <ClCompile Include="src\memory_struct.cpp" />
+    <ClCompile Include="src\module_enum.cpp" />
     <ClCompile Include="src\compiled_pattern.cpp" />
     <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\builder.cpp" />

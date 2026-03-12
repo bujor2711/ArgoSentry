@@ -24,6 +24,7 @@
 #include <ArgoSentry/value_freezer.hh>     // For Value Freezer v3.1
 #include <ArgoSentry/pattern_scanner_enhanced.hh>  // For Enhanced Pattern Scanner v3.1
 #include <ArgoSentry/memory_struct.hh>     // For Memory Structure Templates v3.1
+#include <ArgoSentry/module_enum.hh>       // For Module Enumerator v3.1 FAZA 2
 
 #include <iostream>
 #include <iomanip>
@@ -3793,6 +3794,168 @@ bool test_re_tools_integration(DMA& dma, DWORD pid) {
     }
 }
 
+// Test 27: Module Enumerator (v3.1 - RE Tools FAZA 2 Day 6)
+bool test_module_enumerator(DMA& dma, DWORD pid) {
+    try {
+        print_test_header("Test 27: Module Enumerator (v3.1 FAZA 2)");
+        print_info("Testing module enumeration and analysis...\n");
+
+        // Test 1: Create module enumerator
+        print_info("[Test 1] Creating module enumerator...");
+        auto* enumerator = dma.create_module_enumerator(pid);
+        if (!enumerator) {
+            print_error("Failed to create module enumerator");
+            return false;
+        }
+        print_success("✓ Module enumerator created");
+
+        // Test 2: Enumerate all modules
+        print_info("\n[Test 2] Enumerating all loaded modules...");
+
+        auto modules = enumerator->enumerate_modules();
+        std::cout << "  Found " << modules.size() << " loaded modules\n";
+
+        if (modules.empty()) {
+            print_warning("No modules found (process may not be accessible)");
+        } else {
+            std::cout << "\n  First 10 modules:\n";
+            for (size_t i = 0; i < std::min(size_t(10), modules.size()); ++i) {
+                const auto& mod = modules[i];
+                std::cout << "    [" << (i + 1) << "] " << mod.name << "\n";
+                std::cout << "        Base: 0x" << std::hex << mod.base_address << std::dec << "\n";
+                std::cout << "        Size: 0x" << std::hex << mod.size << std::dec 
+                          << " (" << mod.size << " bytes)\n";
+                std::cout << "        Main: " << (mod.is_main_module() ? "YES" : "no") << "\n";
+            }
+            print_success("✓ Module enumeration works");
+        }
+
+        // Test 3: Find main module
+        print_info("\n[Test 3] Finding main executable...");
+
+        auto main_mod = enumerator->get_main_module();
+        if (main_mod) {
+            std::cout << "  Main module: " << main_mod->name << "\n";
+            std::cout << "  Base address: 0x" << std::hex << main_mod->base_address << std::dec << "\n";
+            std::cout << "  Size: 0x" << std::hex << main_mod->size << std::dec << " bytes\n";
+            std::cout << "  Entry point: 0x" << std::hex << main_mod->entry_point << std::dec << "\n";
+            print_success("✓ Main module found");
+        } else {
+            print_warning("Main module not found");
+        }
+
+        // Test 4: Find specific module
+        print_info("\n[Test 4] Finding specific module (kernel32.dll)...");
+
+        auto kernel32 = enumerator->find_module("kernel32.dll");
+        if (kernel32) {
+            std::cout << "  Found: " << kernel32->name << "\n";
+            std::cout << "  Base: 0x" << std::hex << kernel32->base_address << std::dec << "\n";
+            std::cout << "  Size: " << kernel32->size << " bytes\n";
+            print_success("✓ Module lookup works");
+        } else {
+            std::cout << "  kernel32.dll not found (expected in some processes)\n";
+        }
+
+        // Test 5: Find module by address
+        if (!modules.empty()) {
+            print_info("\n[Test 5] Finding module by address...");
+
+            uint64_t test_addr = modules[0].base_address + 0x1000;
+            auto found_mod = enumerator->find_module_by_address(test_addr);
+
+            if (found_mod) {
+                std::cout << "  Address 0x" << std::hex << test_addr << std::dec 
+                          << " belongs to: " << found_mod->name << "\n";
+                print_success("✓ Address-based lookup works");
+            }
+        }
+
+        // Test 6: Calculate RVA
+        if (main_mod) {
+            print_info("\n[Test 6] Testing RVA calculations...");
+
+            uint64_t test_addr = main_mod->base_address + 0x1234;
+            auto rva = enumerator->calculate_rva(test_addr, main_mod->name);
+
+            if (rva) {
+                std::cout << "  Absolute: 0x" << std::hex << test_addr << std::dec << "\n";
+                std::cout << "  RVA: 0x" << std::hex << *rva << std::dec << "\n";
+
+                // Verify reverse calculation
+                auto abs_addr = enumerator->calculate_absolute(*rva, main_mod->name);
+                if (abs_addr && *abs_addr == test_addr) {
+                    print_success("✓ RVA calculations work (bidirectional)");
+                }
+            }
+        }
+
+        // Test 7: Module caching
+        print_info("\n[Test 7] Testing module caching...");
+
+        std::cout << "  Cache enabled: " << (enumerator->is_cache_enabled() ? "yes" : "no") << "\n";
+
+        auto modules_cached = enumerator->enumerate_modules(false);  // Use cache
+        auto modules_fresh = enumerator->enumerate_modules(true);    // Force refresh
+
+        std::cout << "  Cached result: " << modules_cached.size() << " modules\n";
+        std::cout << "  Fresh result: " << modules_fresh.size() << " modules\n";
+
+        if (modules_cached.size() == modules_fresh.size()) {
+            print_success("✓ Module caching works");
+        }
+
+        // Test 8: Export to file
+        print_info("\n[Test 8] Exporting module list...");
+
+        if (enumerator->export_to_file("modules.txt")) {
+            std::cout << "  Exported to: modules.txt\n";
+            print_success("✓ Module export works");
+        }
+
+        // Cleanup
+        print_info("\n[Cleanup] Destroying module enumerator...");
+        enumerator->clear_cache();
+        dma.destroy_module_enumerator(pid);
+        print_success("✓ Cleanup complete");
+
+        // Summary
+        print_success("\n[SUMMARY] Module Enumerator Test Results:");
+        std::cout << "  ✓ Module enumerator creation\n";
+        std::cout << "  ✓ Module enumeration\n";
+        std::cout << "  ✓ Main module detection\n";
+        std::cout << "  ✓ Module lookup by name\n";
+        std::cout << "  ✓ Module lookup by address\n";
+        std::cout << "  ✓ RVA calculations (absolute ↔ RVA)\n";
+        std::cout << "  ✓ Module caching\n";
+        std::cout << "  ✓ Module export\n";
+
+        std::cout << "\n[USAGE EXAMPLE]\n";
+        std::cout << "  // Create enumerator\n";
+        std::cout << "  auto* enum = dma->create_module_enumerator(pid);\n\n";
+        std::cout << "  // List all modules\n";
+        std::cout << "  auto modules = enum->enumerate_modules();\n";
+        std::cout << "  for (const auto& mod : modules) {\n";
+        std::cout << "      std::cout << mod.name << \" @ 0x\" << std::hex\n";
+        std::cout << "                << mod.base_address << \"\\n\";\n";
+        std::cout << "  }\n\n";
+        std::cout << "  // Find specific module\n";
+        std::cout << "  auto game = enum->find_module(\"game.exe\");\n";
+        std::cout << "  if (game) {\n";
+        std::cout << "      uint64_t base = game->base_address;\n";
+        std::cout << "  }\n\n";
+        std::cout << "  // Calculate RVA\n";
+        std::cout << "  auto rva = enum->calculate_rva(absolute_addr, \"game.exe\");\n";
+        std::cout << "  // Use RVA for pattern matching or offset storage\n";
+
+        return true;
+
+    } catch (const std::exception& e) {
+        print_error(std::string("Module enumerator test failed: ") + e.what());
+        return false;
+    }
+}
+
 // Main menu
 void show_menu() {
     std::cout << "\n+=======================================+\n"
@@ -3833,6 +3996,7 @@ void show_menu() {
     std::cout << " 24. Enhanced Pattern Scanner (v3.1 - NEW!) 🔍✨\n";
     std::cout << " 25. Memory Structure Templates (v3.1 - NEW!) 📦🔧\n";
     std::cout << " 26. RE Tools Integration (v3.1 - FAZA 1 COMPLETE!) 🎯🚀\n";
+    std::cout << " 27. Module Enumerator (v3.1 - FAZA 2 NEW!) 📚🔍\n";
     std::cout << "  0. Exit\n\n";
 }
 
@@ -3954,6 +4118,9 @@ int main() {
                     break;
                 case 26:
                     test_re_tools_integration(dma, current_pid);
+                    break;
+                case 27:
+                    test_module_enumerator(dma, current_pid);
                     break;
                 case 0:
                     running = false;

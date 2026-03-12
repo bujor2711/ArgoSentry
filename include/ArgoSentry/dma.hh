@@ -66,6 +66,10 @@ namespace ArgoSentry {
     // Memory Structure Manager (v3.1 - RE Tools)
     class MemoryStructManager;
 
+    // Module Enumerator (v3.1 - RE Tools FAZA 2)
+    class ModuleEnumerator;
+    struct ModuleInfo;
+
     // Builder pattern (v2.2)
     class DMABuilder;
 
@@ -252,6 +256,11 @@ public:
     void destroy_struct_manager(DWORD process_id);
     [[nodiscard]] MemoryStructManager* get_struct_manager(DWORD process_id) noexcept;
 
+    // Module Enumerator (v3.1 - RE Tools FAZA 2)
+    [[nodiscard]] ModuleEnumerator* create_module_enumerator(DWORD process_id);
+    void destroy_module_enumerator(DWORD process_id);
+    [[nodiscard]] ModuleEnumerator* get_module_enumerator(DWORD process_id) noexcept;
+
 private:
     bool dump_memory_map();
     bool clean_fpga();
@@ -300,6 +309,10 @@ private:
     // Memory struct managers (v3.1 - RE Tools) - one per process
     std::map<DWORD, std::unique_ptr<MemoryStructManager>> struct_managers_;
     mutable std::mutex struct_managers_mutex_;
+
+    // Module enumerators (v3.1 - RE Tools FAZA 2) - one per process
+    std::map<DWORD, std::unique_ptr<ModuleEnumerator>> module_enumerators_;
+    mutable std::mutex module_enumerators_mutex_;
 
     // Logger (v2.9)
     std::shared_ptr<Logger> logger_;
