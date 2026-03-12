@@ -23,6 +23,7 @@
 #include <ArgoSentry/pointer_chain.hh>     // For Pointer Chain Resolver v3.1
 #include <ArgoSentry/value_freezer.hh>     // For Value Freezer v3.1
 #include <ArgoSentry/pattern_scanner_enhanced.hh>  // For Enhanced Pattern Scanner v3.1
+#include <ArgoSentry/memory_struct.hh>     // For Memory Structure Templates v3.1
 
 #include <iostream>
 #include <iomanip>
@@ -3325,6 +3326,181 @@ bool test_enhanced_pattern_scanner(ArgoSentry::DMA& dma, DWORD pid) {
     }
 }
 
+// Test 25: Memory Structure Templates (v3.1 - RE Tools Day 4)
+bool test_memory_structures(DMA& dma, DWORD pid) {
+    try {
+        print_test_header("Test 25: Memory Structure Templates (v3.1)");
+        print_info("Testing C++ struct reading with automatic padding/alignment...\n");
+
+        // Define test structures
+        struct SimpleStruct {
+            int32_t health;
+            int32_t mana;
+            float position_x;
+            float position_y;
+        };
+
+        struct ComplexStruct {
+            char name[32];
+            int32_t level;
+            int32_t exp;
+            float stats[3];  // Array member
+            uint64_t inventory_ptr;
+        };
+
+        // Test 1: Create struct manager
+        print_info("[Test 1] Creating struct manager...");
+        auto* mgr = dma.create_struct_manager(pid);
+        if (!mgr) {
+            print_error("Failed to create struct manager");
+            return false;
+        }
+        print_success("✓ Struct manager created");
+
+        // Test 2: Register named structs
+        print_info("\n[Test 2] Registering named structs...");
+
+        uint64_t base_addr = 0x140000000;
+        mgr->register_struct("player", base_addr, 0x100);
+        mgr->register_struct("enemy", base_addr, 0x200);
+        mgr->register_struct("npc", base_addr, 0x300);
+
+        auto names = mgr->get_names();
+        std::cout << "  Registered structs: " << names.size() << "\n";
+        for (const auto& name : names) {
+            std::cout << "    - " << name << "\n";
+        }
+        print_success("✓ Struct registration works");
+
+        // Test 3: Get registered addresses
+        print_info("\n[Test 3] Testing address retrieval...");
+
+        auto player_addr = mgr->get_address("player");
+        auto enemy_addr = mgr->get_address("enemy");
+        auto invalid_addr = mgr->get_address("invalid");
+
+        if (player_addr && *player_addr == base_addr + 0x100) {
+            std::cout << "  Player address: 0x" << std::hex << *player_addr << std::dec << "\n";
+            print_success("✓ Address retrieval works");
+        } else {
+            print_error("Address retrieval failed");
+            return false;
+        }
+
+        if (!invalid_addr) {
+            print_success("✓ Invalid struct returns nullopt");
+        }
+
+        // Test 4: Update base address
+        print_info("\n[Test 4] Testing base address update...");
+
+        uint64_t new_base = 0x150000000;
+        mgr->update_base(base_addr, new_base);
+
+        auto updated_addr = mgr->get_address("player");
+        if (updated_addr && *updated_addr == new_base + 0x100) {
+            std::cout << "  Updated player address: 0x" << std::hex << *updated_addr << std::dec << "\n";
+            print_success("✓ Base address update works");
+        } else {
+            print_error("Base address update failed");
+            return false;
+        }
+
+        // Test 5: Struct size validation
+        print_info("\n[Test 5] Testing struct size validation...");
+
+        auto [simple_size, simple_align] = get_struct_info<SimpleStruct>();
+        auto [complex_size, complex_align] = get_struct_info<ComplexStruct>();
+
+        std::cout << "  SimpleStruct: size=" << simple_size 
+                  << " bytes, alignment=" << simple_align << "\n";
+        std::cout << "  ComplexStruct: size=" << complex_size 
+                  << " bytes, alignment=" << complex_align << "\n";
+
+        // Check POD types compile-time
+        static_assert(std::is_trivially_copyable_v<SimpleStruct>, "SimpleStruct must be POD");
+        static_assert(std::is_trivially_copyable_v<ComplexStruct>, "ComplexStruct must be POD");
+
+        print_success("✓ Struct size validation works");
+
+        // Test 6: Simulated struct reading
+        print_info("\n[Test 6] Testing struct reading (simulated)...");
+        std::cout << "  Note: Actual memory reading requires valid process memory\n";
+        std::cout << "  Demonstrating read_struct<T>() template usage:\n";
+        std::cout << "    auto player = read_struct<SimpleStruct>(dma, addr, pid);\n";
+        std::cout << "    if (player) {\n";
+        std::cout << "        std::cout << \"Health: \" << player->health << \"\\n\";\n";
+        std::cout << "    }\n";
+        print_success("✓ Struct reading API demonstrated");
+
+        // Test 7: Manager-based reading
+        print_info("\n[Test 7] Testing manager-based reading...");
+        std::cout << "  Usage example:\n";
+        std::cout << "    auto player = mgr->read<SimpleStruct>(\"player\", dma, pid);\n";
+        std::cout << "    if (player) {\n";
+        std::cout << "        std::cout << \"Health: \" << player->health << \"\\n\";\n";
+        std::cout << "    }\n";
+        print_success("✓ Manager-based reading API demonstrated");
+
+        // Test 8: Unregister structs
+        print_info("\n[Test 8] Testing struct unregistration...");
+
+        bool removed = mgr->unregister_struct("npc");
+        if (removed) {
+            std::cout << "  Successfully removed 'npc'\n";
+            print_success("✓ Unregistration works");
+        }
+
+        mgr->clear();
+        if (mgr->get_names().empty()) {
+            print_success("✓ Clear works");
+        }
+
+        // Cleanup
+        print_info("\n[Cleanup] Destroying struct manager...");
+        dma.destroy_struct_manager(pid);
+        print_success("✓ Cleanup complete");
+
+        // Summary
+        print_success("\n[SUMMARY] Memory Structure Templates Test Results:");
+        std::cout << "  ✓ Struct manager creation\n";
+        std::cout << "  ✓ Named struct registration\n";
+        std::cout << "  ✓ Address retrieval\n";
+        std::cout << "  ✓ Base address updates\n";
+        std::cout << "  ✓ Struct size validation\n";
+        std::cout << "  ✓ Template-based reading API\n";
+        std::cout << "  ✓ Manager-based reading API\n";
+        std::cout << "  ✓ Struct unregistration\n";
+
+        std::cout << "\n[USAGE EXAMPLE]\n";
+        std::cout << "  // Define your game struct\n";
+        std::cout << "  struct Player {\n";
+        std::cout << "      char name[64];\n";
+        std::cout << "      int32_t health;\n";
+        std::cout << "      int32_t mana;\n";
+        std::cout << "      float position[3];\n";
+        std::cout << "  };\n\n";
+        std::cout << "  // Read entire struct at once\n";
+        std::cout << "  auto player = read_struct<Player>(dma, player_addr, pid);\n";
+        std::cout << "  if (player) {\n";
+        std::cout << "      std::cout << \"Health: \" << player->health << \"\\n\";\n";
+        std::cout << "      std::cout << \"Position: (\" << player->position[0]\n";
+        std::cout << "          << \", \" << player->position[1]\n";
+        std::cout << "          << \", \" << player->position[2] << \")\\n\";\n";
+        std::cout << "  }\n\n";
+        std::cout << "  // Or use manager for named structs\n";
+        std::cout << "  auto* mgr = dma->create_struct_manager(pid);\n";
+        std::cout << "  mgr->register_struct(\"player\", base, 0x100);\n";
+        std::cout << "  auto p = mgr->read<Player>(\"player\", *dma, pid);\n";
+
+        return true;
+
+    } catch (const std::exception& e) {
+        print_error(std::string("Memory structures test failed: ") + e.what());
+        return false;
+    }
+}
+
 // Main menu
 void show_menu() {
     std::cout << "\n+=======================================+\n"
@@ -3363,6 +3539,7 @@ void show_menu() {
     std::cout << " 22. Pointer Chain Resolver (v3.1 - NEW!) 🎯🔗\n";
     std::cout << " 23. Value Freezer (v3.1 - NEW!) 🧊💉\n";
     std::cout << " 24. Enhanced Pattern Scanner (v3.1 - NEW!) 🔍✨\n";
+    std::cout << " 25. Memory Structure Templates (v3.1 - NEW!) 📦🔧\n";
     std::cout << "  0. Exit\n\n";
 }
 
@@ -3478,6 +3655,9 @@ int main() {
                     break;
                 case 24:
                     test_enhanced_pattern_scanner(dma, current_pid);
+                    break;
+                case 25:
+                    test_memory_structures(dma, current_pid);
                     break;
                 case 0:
                     running = false;

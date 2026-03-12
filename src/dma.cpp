@@ -19,6 +19,7 @@
 #include "ArgoSentry/pointer_chain.hh"  // v3.1 - Pointer chain resolver (RE Tools)
 #include "ArgoSentry/value_freezer.hh"  // v3.1 - Value freezer (RE Tools)
 #include "ArgoSentry/pattern_scanner_enhanced.hh"  // v3.1 - Enhanced pattern scanner (RE Tools)
+#include "ArgoSentry/memory_struct.hh"  // v3.1 - Memory structure templates (RE Tools)
 
 #define NOMINMAX
 #include <Windows.h>
@@ -1200,6 +1201,38 @@ EnhancedPatternScanner* DMA::get_pattern_scanner(DWORD process_id) noexcept {
     std::lock_guard<std::mutex> lock(pattern_scanners_mutex_);
     auto it = pattern_scanners_.find(process_id);
     if (it != pattern_scanners_.end()) {
+        return it->second.get();
+    }
+    return nullptr;
+}
+
+// Memory Structure Manager (v3.1 - RE Tools)
+
+MemoryStructManager* DMA::create_struct_manager(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(struct_managers_mutex_);
+
+    // Check if already exists
+    auto it = struct_managers_.find(process_id);
+    if (it != struct_managers_.end()) {
+        return it->second.get();
+    }
+
+    // Create new manager
+    auto manager = std::make_unique<MemoryStructManager>();
+    auto* ptr = manager.get();
+    struct_managers_[process_id] = std::move(manager);
+    return ptr;
+}
+
+void DMA::destroy_struct_manager(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(struct_managers_mutex_);
+    struct_managers_.erase(process_id);
+}
+
+MemoryStructManager* DMA::get_struct_manager(DWORD process_id) noexcept {
+    std::lock_guard<std::mutex> lock(struct_managers_mutex_);
+    auto it = struct_managers_.find(process_id);
+    if (it != struct_managers_.end()) {
         return it->second.get();
     }
     return nullptr;

@@ -191,6 +191,11 @@ DMABuilder& DMABuilder::with_enhanced_scanner(bool enable) {
     return *this;
 }
 
+DMABuilder& DMABuilder::with_memory_structs(bool enable) {
+    memory_structs_enabled_ = enable;
+    return *this;
+}
+
 std::unique_ptr<DMA> DMABuilder::build() const {
     // Validate configuration before building
     if (!is_valid()) {

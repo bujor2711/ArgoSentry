@@ -311,6 +311,54 @@ public:
     DMABuilder& with_enhanced_scanner(bool enable = true);
 
     /**
+     * @brief Enable memory structure templates for reading C++ structs
+     * @param enable Enable memory struct support (default: true)
+     * @return Reference to this builder for chaining
+     * @since v3.1 - RE Tools
+     * 
+     * Example:
+     * @code
+     * auto dma = DMABuilder()
+     *     .with_memory_structs(true)
+     *     .build();
+     * 
+     * // Define game struct
+     * struct Player {
+     *     char name[64];
+     *     int32_t health;
+     *     int32_t mana;
+     *     float position[3];
+     * };
+     * 
+     * // Read entire struct at once
+     * auto player = read_struct<Player>(*dma, player_addr, pid);
+     * if (player) {
+     *     std::cout << "Health: " << player->health << "\n";
+     * }
+     * 
+     * // Use manager for named structs
+     * auto* mgr = dma->create_struct_manager(pid);
+     * mgr->register_struct("player", base_addr, 0x100);
+     * auto player2 = mgr->read<Player>("player", *dma, pid);
+     * @endcode
+     * 
+     * Memory structure templates provide:
+     * - Automatic C++ struct reading (single operation)
+     * - POD type validation (compile-time)
+     * - Nested struct support
+     * - Array member support
+     * - Named struct management
+     * - Struct size validation
+     * 
+     * Use cases:
+     * - Read complex game objects efficiently
+     * - Handle player/entity structures
+     * - Parse inventory/item data
+     * - Analyze memory structures
+     */
+    DMABuilder& with_memory_structs(bool enable = true);
+
+    /**
      * @brief Build DMA object with configured settings
      * @return Fully configured DMA instance (unique_ptr)
      * @throws std::runtime_error if configuration is invalid
@@ -388,6 +436,9 @@ private:
 
     // v3.1: Enhanced pattern scanner (RE Tools)
     bool enhanced_scanner_enabled_{true};               // Enhanced scanner enabled by default
+
+    // v3.1: Memory structure templates (RE Tools)
+    bool memory_structs_enabled_{true};                 // Memory structs enabled by default
 
     // Validation helpers
     bool validate_cache_config() const;

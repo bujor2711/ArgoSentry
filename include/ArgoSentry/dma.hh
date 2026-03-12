@@ -63,6 +63,9 @@ namespace ArgoSentry {
     class EnhancedPatternScanner;
     struct PatternScanStats;
 
+    // Memory Structure Manager (v3.1 - RE Tools)
+    class MemoryStructManager;
+
     // Builder pattern (v2.2)
     class DMABuilder;
 
@@ -244,6 +247,11 @@ public:
     void destroy_pattern_scanner(DWORD process_id);
     [[nodiscard]] EnhancedPatternScanner* get_pattern_scanner(DWORD process_id) noexcept;
 
+    // Memory Structure Manager (v3.1 - RE Tools)
+    [[nodiscard]] MemoryStructManager* create_struct_manager(DWORD process_id);
+    void destroy_struct_manager(DWORD process_id);
+    [[nodiscard]] MemoryStructManager* get_struct_manager(DWORD process_id) noexcept;
+
 private:
     bool dump_memory_map();
     bool clean_fpga();
@@ -288,6 +296,10 @@ private:
     // Enhanced pattern scanners (v3.1 - RE Tools) - one per process
     std::map<DWORD, std::unique_ptr<EnhancedPatternScanner>> pattern_scanners_;
     mutable std::mutex pattern_scanners_mutex_;
+
+    // Memory struct managers (v3.1 - RE Tools) - one per process
+    std::map<DWORD, std::unique_ptr<MemoryStructManager>> struct_managers_;
+    mutable std::mutex struct_managers_mutex_;
 
     // Logger (v2.9)
     std::shared_ptr<Logger> logger_;
