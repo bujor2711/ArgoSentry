@@ -137,6 +137,23 @@ DMABuilder& DMABuilder::with_rate_limit(size_t bytes_per_sec) {
     return *this;
 }
 
+DMABuilder& DMABuilder::with_circuit_breaker(
+    size_t failure_threshold,
+    unsigned int timeout_seconds
+) {
+    if (failure_threshold == 0) {
+        throw std::invalid_argument("Circuit breaker failure threshold must be at least 1");
+    }
+    if (timeout_seconds == 0) {
+        throw std::invalid_argument("Circuit breaker timeout must be at least 1 second");
+    }
+
+    circuit_breaker_enabled_ = true;
+    circuit_breaker_failure_threshold_ = failure_threshold;
+    circuit_breaker_timeout_seconds_ = timeout_seconds;
+    return *this;
+}
+
 std::unique_ptr<DMA> DMABuilder::build() const {
     // Validate configuration before building
     if (!is_valid()) {

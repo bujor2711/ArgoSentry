@@ -15,6 +15,7 @@
     <ClInclude Include="include\ArgoSentry\async.hh" />
     <ClInclude Include="include\ArgoSentry\batch.hh" />
     <ClInclude Include="include\ArgoSentry\cache.hh" />
+    <ClInclude Include="include\ArgoSentry\circuit_breaker.hh" />
     <ClInclude Include="include\ArgoSentry\compiled_pattern.hh" />
     <ClInclude Include="include\ArgoSentry\config.hh" />
     <ClInclude Include="include\ArgoSentry\builder.hh" />
@@ -46,9 +47,11 @@
   </ItemGroup>
   <!-- Source Files - Only main library (NO mock, NO tests, NO examples) -->
   <ItemGroup>
+    <ClCompile Include="example\demo_logging.cpp" />
     <ClCompile Include="src\async.cpp" />
     <ClCompile Include="src\batch.cpp" />
     <ClCompile Include="src\cache.cpp" />
+    <ClCompile Include="src\circuit_breaker.cpp" />
     <ClCompile Include="src\compiled_pattern.cpp" />
     <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\builder.cpp" />
@@ -93,9 +96,16 @@
     <None Include="IMPLEMENTATION_COMPLETE.md" />
     <None Include="LIBRARY_STATUS_2026.md" />
     <None Include="LOGGING_TEST_SUMMARY.md" />
+    <None Include="PHASE2_COMMIT.md" />
+    <None Include="PHASE2_COMPLETE.md" />
     <None Include="README.md" />
     <None Include="RELEASE_NOTES_v2.0.md" />
     <None Include="ROADMAP.md" />
+    <None Include="run_test18.ps1" />
+    <None Include="RUN_TEST18_NOW.md" />
+    <None Include="TEST18_FIXED.md" />
+    <None Include="TEST18_FIX_SUMMARY.md" />
+    <None Include="TEST18_GUIDE.md" />
     <None Include="THREADING_COMPLETE.md" />
     <None Include="v2.0_IMPLEMENTATION_COMPLETE.md" />
     <None Include="ArgoSentry.ini" />

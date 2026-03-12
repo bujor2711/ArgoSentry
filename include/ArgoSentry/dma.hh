@@ -43,6 +43,10 @@ namespace ArgoSentry {
     // Rate limiting (v2.3)
     class RateLimiter;
 
+    // Circuit Breaker (v3.0)
+    class CircuitBreaker;
+    enum class CircuitState;
+
     // Builder pattern (v2.2)
     class DMABuilder;
 
@@ -197,6 +201,13 @@ public:
     [[nodiscard]] bool is_rate_limiting_enabled() const;
     [[nodiscard]] size_t get_rate_limit() const;
 
+    // Circuit Breaker (v3.0)
+    [[nodiscard]] CircuitBreaker* get_circuit_breaker() noexcept;
+    [[nodiscard]] const CircuitBreaker* get_circuit_breaker() const noexcept;
+    [[nodiscard]] CircuitState get_circuit_state() const noexcept;
+    void trip_circuit_breaker() noexcept;
+    void reset_circuit_breaker() noexcept;
+
 private:
     bool dump_memory_map();
     bool clean_fpga();
@@ -224,6 +235,9 @@ private:
 
     // Rate limiter (v2.3)
     std::unique_ptr<RateLimiter> rate_limiter_;
+
+    // Circuit breaker (v3.0)
+    std::unique_ptr<CircuitBreaker> circuit_breaker_;
 
     // Logger (v2.9)
     std::shared_ptr<Logger> logger_;

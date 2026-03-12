@@ -1,8 +1,8 @@
 # 🗺️ ArgoSentry Roadmap - Optional Features
 
-**Versiune curentă:** v2.9 (Production Ready + Logging Framework) ✅  
+**Versiune curentă:** v3.0 (Circuit Breaker - Health Monitoring Foundation) ✅  
 **Ultima actualizare:** 3 Decembrie 2026  
-**Status:** ✅ **PRODUCTION READY** - Full observability + <1% logging overhead!
+**Status:** ✅ **PRODUCTION READY** - Full observability + Fault Tolerance!
 
 > **📝 Notă:** Features implementate (v1.0 - v2.9) sunt documentate în `IMPLEMENTED_FEATURES.md`
 
@@ -44,6 +44,91 @@
 6. Test 17 → 9 tests (async performance, rotation, colors, sinks)
 7. Test 18 → 6 tests (Builder integration, standalone loggers)
 8. Test 19 → **Performance validation: <1% overhead achieved!**
+
+### **🚀 Phase 3 - Health Monitoring (v3.0) - IN PROGRESS:**
+✅ **Circuit Breaker Pattern (v3.0)** - COMPLETE (Day 1-2)  
+📝 **Self-Healing System** - PENDING (Day 3)  
+📝 **Health HTTP Endpoints** - PENDING (Days 4-5)  
+📝 **Prometheus Metrics Exporter** - PENDING (Days 5-6)  
+📝 **Alert System** - PENDING (Day 7)  
+📝 **Integration & Testing** - PENDING (Day 8)  
+📊 **Progress: 35% complete** - Circuit Breaker foundation ready!
+
+### **Latest Feature (v3.0 - Circuit Breaker Pattern):**
+✅ **Circuit Breaker Implementation - COMPLETE:**
+1. **State Machine** → CLOSED (normal) → OPEN (blocking) → HALF_OPEN (testing) → CLOSED (recovered)
+2. **Automatic Failure Detection** → Configurable threshold (default: 5 failures)
+3. **Automatic Recovery** → Timeout mechanism (default: 30 seconds)
+4. **Manual Controls** → trip(), reset(), half_open() for manual override
+5. **Statistics Tracking** → Counters (total/success/fail/rejected), rates, timestamps
+6. **Thread Safety** → std::atomic state + std::mutex for stats
+7. **Runtime Configuration** → update_config() for dynamic thresholds
+8. **Error Handling** → std::error_code integration, CircuitBreakerOpenException
+9. **State Callbacks** → Logged automatically on state transitions
+10. **Builder Integration** → .with_circuit_breaker(failure_threshold, timeout_seconds)
+11. **DMA Access** → get_circuit_breaker(), get_circuit_state(), trip/reset methods
+12. **Test 20** → 8 comprehensive sub-tests (280 lines)
+
+**Implementation Details:**
+- **Files:** circuit_breaker.hh (348 lines), circuit_breaker.cpp (217 lines)
+- **DMA Integration:** dma.hh/cpp (35 lines) - 5 public methods
+- **Builder Integration:** builder.hh/cpp (50 lines) - with_circuit_breaker()
+- **Testing:** Test 20 (280 lines) - 8 sub-tests
+- **Total LOC:** 930 lines
+- **Build Status:** ✅ SUCCESS (0 errors, 0 warnings)
+
+**Usage Example:**
+```cpp
+// Via Builder (recommended):
+auto dma = DMABuilder()
+    .with_circuit_breaker(10, 60)  // 10 failures, 60s timeout
+    .with_logging(LogLevel::INFO, "dma.log")
+    .build();
+
+// Access circuit breaker:
+auto* cb = dma->get_circuit_breaker();
+auto state = dma->get_circuit_state();  // CLOSED, OPEN, or HALF_OPEN
+
+// Manual controls:
+dma->trip_circuit_breaker();   // Force open
+dma->reset_circuit_breaker();  // Force closed
+
+// Statistics:
+auto stats = cb->get_stats();
+std::cout << "Success rate: " << stats.get_success_rate() << "%\n";
+std::cout << "Failed calls: " << stats.failed_calls << "\n";
+std::cout << "Rejected calls: " << stats.rejected_calls << "\n";
+```
+
+**Test 20 - Circuit Breaker (8 sub-tests):**
+1. **Initial State Verification** → Verify CLOSED state, statistics accessible
+2. **Failure Counting** → 5 consecutive failures trigger OPEN state
+3. **Operation Rejection** → Operations rejected while OPEN, rejected_calls increments
+4. **Manual Controls** → trip() forces OPEN, reset() forces CLOSED
+5. **Automatic Recovery** → 31s timeout test: OPEN → HALF_OPEN → CLOSED
+6. **Statistics Tracking** → Counters, rates, state transitions validated
+7. **Configuration Updates** → Runtime threshold/timeout changes
+8. **Thread Safety** → 4 concurrent threads, 200 operations total
+
+**Benefits:**
+✅ **Fault Tolerance** - Prevents cascading failures when DMA hardware has issues  
+✅ **Graceful Degradation** - System continues with reduced functionality  
+✅ **Automatic Recovery** - Self-heals after timeout period  
+✅ **Production Ready** - Thread-safe, tested, comprehensive error handling  
+✅ **Configurable** - Adjust thresholds based on application needs  
+✅ **Observable** - Statistics and callbacks for monitoring  
+✅ **Foundation** - Required by all Phase 3 components (Self-Healing, Health Endpoints, etc.)
+
+**Why Circuit Breaker First:**
+The Circuit Breaker pattern is the foundation for all Phase 3 health monitoring components:
+- **Self-Healing System** (Day 3) depends on circuit breaker for failure detection
+- **Health Endpoints** (Days 4-5) expose circuit breaker state/statistics
+- **Prometheus Exporter** (Days 5-6) exports circuit breaker metrics
+- **Alert System** (Day 7) triggers alerts on circuit state changes
+
+**Next:** Self-Healing System (Day 3) - Automatic DMA reconnection, retry policies, fallback strategies
+
+---
 
 ### **Optional Features Remaining:**
 🔵 **3 low-priority features** - Very low ROI, not recommended  

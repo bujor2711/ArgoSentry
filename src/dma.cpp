@@ -1,6 +1,6 @@
 // ArgoSentry - Main DMA Implementation
 // Complete implementation with FPGA hardware support
-// v2.9 - Full functional implementation with Logging Framework
+// v3.0 - Health Monitoring with Circuit Breaker Pattern
 
 #include "ArgoSentry/dma.hh"
 #include "ArgoSentry/validators.hh"
@@ -14,6 +14,7 @@
 #include "ArgoSentry/rate_limiter.hh"  // v2.3 - Rate limiting
 #include "ArgoSentry/compiled_pattern.hh"  // v2.5 - Pattern compilation
 #include "ArgoSentry/logger.hh"  // v2.9 - Logging framework
+#include "ArgoSentry/circuit_breaker.hh"  // v3.0 - Circuit breaker pattern
 
 #define NOMINMAX
 #include <Windows.h>
@@ -90,6 +91,22 @@ DMA::DMA(bool use_memory_map, std::shared_ptr<Logger> logger)
         }
         dump_memory_map();
     }
+
+    // Initialize circuit breaker (v3.0)
+    // Default config: 5 failures, 30s timeout, 2 successes to close
+    CircuitBreakerConfig cb_config;
+    cb_config.failure_threshold = 5;
+    cb_config.open_timeout = std::chrono::seconds(30);
+    cb_config.success_threshold = 2;
+    cb_config.on_state_change = [this](CircuitState old_state, CircuitState new_state) {
+        if (logger_) {
+            std::string msg = "Circuit breaker state transition: " +
+                            std::string(to_string(old_state)) + " -> " +
+                            std::string(to_string(new_state));
+            LOG_WARN(logger_, msg);
+        }
+    };
+    circuit_breaker_ = std::make_unique<CircuitBreaker>(cb_config);
 
     if (logger_) {
         LOG_INFO(logger_, "All DMA subsystems initialized successfully");
@@ -997,6 +1014,37 @@ bool DMA::is_rate_limiting_enabled() const {
 
 size_t DMA::get_rate_limit() const {
     return rate_limiter_ ? rate_limiter_->get_limit() : 0;
+}
+
+//==============================================================================
+// Circuit Breaker (v3.0)
+//==============================================================================
+
+CircuitBreaker* DMA::get_circuit_breaker() noexcept {
+    return circuit_breaker_.get();
+}
+
+const CircuitBreaker* DMA::get_circuit_breaker() const noexcept {
+    return circuit_breaker_.get();
+}
+
+CircuitState DMA::get_circuit_state() const noexcept {
+    if (!circuit_breaker_) {
+        return CircuitState::CLOSED;  // No breaker = always closed
+    }
+    return circuit_breaker_->get_state();
+}
+
+void DMA::trip_circuit_breaker() noexcept {
+    if (circuit_breaker_) {
+        circuit_breaker_->trip();
+    }
+}
+
+void DMA::reset_circuit_breaker() noexcept {
+    if (circuit_breaker_) {
+        circuit_breaker_->reset();
+    }
 }
 
 } // namespace ArgoSentry

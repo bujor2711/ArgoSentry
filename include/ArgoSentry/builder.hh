@@ -145,6 +145,34 @@ public:
     DMABuilder& with_rate_limit(size_t bytes_per_sec);
 
     /**
+     * @brief Configure circuit breaker for fault tolerance
+     * @param failure_threshold Number of failures before opening circuit (default: 5)
+     * @param timeout_seconds Seconds in OPEN state before attempting recovery (default: 30)
+     * @return Reference to this builder for chaining
+     * @since v3.0
+     * 
+     * Example:
+     * @code
+     * auto dma = DMABuilder()
+     *     .with_circuit_breaker(10, 60)  // 10 failures, 60s timeout
+     *     .build();
+     * @endcode
+     * 
+     * Circuit breaker prevents cascading failures by temporarily blocking
+     * operations when failure threshold is reached. Automatically attempts
+     * recovery after timeout period.
+     * 
+     * States:
+     * - CLOSED: Normal operation, operations allowed
+     * - OPEN: Blocking mode, operations rejected (after threshold)
+     * - HALF_OPEN: Testing recovery, limited operations allowed
+     */
+    DMABuilder& with_circuit_breaker(
+        size_t failure_threshold = 5,
+        unsigned int timeout_seconds = 30
+    );
+
+    /**
      * @brief Build DMA object with configured settings
      * @return Fully configured DMA instance (unique_ptr)
      * @throws std::runtime_error if configuration is invalid
@@ -202,6 +230,11 @@ private:
     LogLevel log_level_;                    // File log level
     LogLevel console_log_level_;            // Console log level
     std::string log_filepath_;              // Log file path
+
+    // v3.0: Circuit breaker members
+    bool circuit_breaker_enabled_{true};                // Circuit breaker enabled by default
+    size_t circuit_breaker_failure_threshold_{5};       // Failures before opening
+    unsigned int circuit_breaker_timeout_seconds_{30};  // Timeout in OPEN state
 
     // Validation helpers
     bool validate_cache_config() const;
