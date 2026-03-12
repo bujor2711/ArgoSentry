@@ -181,6 +181,11 @@ DMABuilder& DMABuilder::with_pointer_resolver(bool enable) {
     return *this;
 }
 
+DMABuilder& DMABuilder::with_value_freezer(bool enable) {
+    value_freezer_enabled_ = enable;
+    return *this;
+}
+
 std::unique_ptr<DMA> DMABuilder::build() const {
     // Validate configuration before building
     if (!is_valid()) {

@@ -55,6 +55,10 @@ namespace ArgoSentry {
     // Pointer Chain Resolver (v3.1 - RE Tools)
     class PointerChainManager;
 
+    // Value Freezer (v3.1 - RE Tools)
+    class ValueFreezer;
+    struct ValueFreezerStats;
+
     // Builder pattern (v2.2)
     class DMABuilder;
 
@@ -226,6 +230,11 @@ public:
     [[nodiscard]] PointerChainManager* get_pointer_chain_manager() noexcept;
     [[nodiscard]] const PointerChainManager* get_pointer_chain_manager() const noexcept;
 
+    // Value Freezer (v3.1 - RE Tools)
+    [[nodiscard]] ValueFreezer* create_value_freezer(DWORD process_id);
+    void destroy_value_freezer(DWORD process_id);
+    [[nodiscard]] ValueFreezer* get_value_freezer(DWORD process_id) noexcept;
+
 private:
     bool dump_memory_map();
     bool clean_fpga();
@@ -262,6 +271,10 @@ private:
 
     // Pointer chain manager (v3.1 - RE Tools)
     std::unique_ptr<PointerChainManager> pointer_chain_manager_;
+
+    // Value freezers (v3.1 - RE Tools) - one per process
+    std::map<DWORD, std::unique_ptr<ValueFreezer>> value_freezers_;
+    mutable std::mutex value_freezers_mutex_;
 
     // Logger (v2.9)
     std::shared_ptr<Logger> logger_;

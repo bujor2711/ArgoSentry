@@ -17,6 +17,7 @@
 #include "ArgoSentry/circuit_breaker.hh"  // v3.0 - Circuit breaker pattern
 #include "ArgoSentry/self_healing.hh"  // v3.0 - Self-healing system
 #include "ArgoSentry/pointer_chain.hh"  // v3.1 - Pointer chain resolver (RE Tools)
+#include "ArgoSentry/value_freezer.hh"  // v3.1 - Value freezer (RE Tools)
 
 #define NOMINMAX
 #include <Windows.h>
@@ -1133,6 +1134,40 @@ PointerChainManager* DMA::get_pointer_chain_manager() noexcept {
 
 const PointerChainManager* DMA::get_pointer_chain_manager() const noexcept {
     return pointer_chain_manager_.get();
+}
+
+//==============================================================================
+// Value Freezer (v3.1 - RE Tools)
+//==============================================================================
+
+ValueFreezer* DMA::create_value_freezer(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(value_freezers_mutex_);
+
+    // Check if already exists
+    if (value_freezers_.find(process_id) != value_freezers_.end()) {
+        return value_freezers_[process_id].get();
+    }
+
+    // Create new freezer
+    auto freezer = std::make_unique<ValueFreezer>(this, process_id);
+    auto* ptr = freezer.get();
+    value_freezers_[process_id] = std::move(freezer);
+
+    return ptr;
+}
+
+void DMA::destroy_value_freezer(DWORD process_id) {
+    std::lock_guard<std::mutex> lock(value_freezers_mutex_);
+    value_freezers_.erase(process_id);
+}
+
+ValueFreezer* DMA::get_value_freezer(DWORD process_id) noexcept {
+    std::lock_guard<std::mutex> lock(value_freezers_mutex_);
+    auto it = value_freezers_.find(process_id);
+    if (it != value_freezers_.end()) {
+        return it->second.get();
+    }
+    return nullptr;
 }
 
 } // namespace ArgoSentry

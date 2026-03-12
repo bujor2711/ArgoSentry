@@ -237,6 +237,41 @@ public:
     DMABuilder& with_pointer_resolver(bool enable = true);
 
     /**
+     * @brief Enable value freezer for maintaining constant memory values
+     * @param enable Enable value freezer (default: true)
+     * @return Reference to this builder for chaining
+     * @since v3.1 - RE Tools
+     * 
+     * Example:
+     * @code
+     * auto dma = DMABuilder()
+     *     .with_value_freezer(true)
+     *     .build();
+     * 
+     * // Create freezer for specific process
+     * auto* freezer = dma->create_value_freezer(pid);
+     * 
+     * // Freeze player health at 100
+     * freezer->freeze_value<int32_t>(health_addr, 100, 50); // Every 50ms
+     * @endcode
+     * 
+     * Value freezer provides:
+     * - Automatic value maintenance (god mode, infinite ammo)
+     * - Background worker thread for continuous writes
+     * - Per-address pause/resume
+     * - Global pause/resume for all values
+     * - Statistics (total writes, success rate)
+     * - Thread-safe operations
+     * 
+     * Use cases:
+     * - God mode (freeze health at max)
+     * - Infinite ammo/resources
+     * - Speed hacks (freeze speed multiplier)
+     * - Position locks (freeze coordinates)
+     */
+    DMABuilder& with_value_freezer(bool enable = true);
+
+    /**
      * @brief Build DMA object with configured settings
      * @return Fully configured DMA instance (unique_ptr)
      * @throws std::runtime_error if configuration is invalid
@@ -308,6 +343,9 @@ private:
 
     // v3.1: Pointer chain resolver (RE Tools)
     bool pointer_resolver_enabled_{true};               // Pointer resolver enabled by default
+
+    // v3.1: Value freezer (RE Tools)
+    bool value_freezer_enabled_{true};                  // Value freezer enabled by default
 
     // Validation helpers
     bool validate_cache_config() const;

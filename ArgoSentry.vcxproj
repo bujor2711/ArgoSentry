@@ -18,6 +18,7 @@
     <ClInclude Include="include\ArgoSentry\circuit_breaker.hh" />
     <ClInclude Include="include\ArgoSentry\self_healing.hh" />
     <ClInclude Include="include\ArgoSentry\pointer_chain.hh" />
+    <ClInclude Include="include\ArgoSentry\value_freezer.hh" />
     <ClInclude Include="include\ArgoSentry\compiled_pattern.hh" />
     <ClInclude Include="include\ArgoSentry\config.hh" />
     <ClInclude Include="include\ArgoSentry\builder.hh" />
@@ -56,6 +57,7 @@
     <ClCompile Include="src\circuit_breaker.cpp" />
     <ClCompile Include="src\self_healing.cpp" />
     <ClCompile Include="src\pointer_chain.cpp" />
+    <ClCompile Include="src\value_freezer.cpp" />
     <ClCompile Include="src\compiled_pattern.cpp" />
     <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\builder.cpp" />

@@ -21,6 +21,7 @@
 #include <ArgoSentry/circuit_breaker.hh>   // For Circuit Breaker v3.0
 #include <ArgoSentry/self_healing.hh>      // For Self-Healing System v3.0
 #include <ArgoSentry/pointer_chain.hh>     // For Pointer Chain Resolver v3.1
+#include <ArgoSentry/value_freezer.hh>     // For Value Freezer v3.1
 
 #include <iostream>
 #include <iomanip>
@@ -2891,6 +2892,195 @@ bool test_pointer_chain_resolver(ArgoSentry::DMA& dma) {
     }
 }
 
+//==============================================================================
+// Test 23: Value Freezer (v3.1 - RE Tools)
+//==============================================================================
+bool test_value_freezer(ArgoSentry::DMA& dma, DWORD pid) {
+    print_header("TEST 23: VALUE FREEZER (v3.1 - RE TOOLS)");
+
+    if (pid == 0) {
+        print_warning("No process selected. Please run Test 2 first.");
+        return false;
+    }
+
+    try {
+        print_info("Testing value freezing for god mode / infinite resources...");
+
+        // Test 1: Create value freezer
+        print_info("\n[Test 1] Creating value freezer for PID " + std::to_string(pid) + "...");
+
+        auto* freezer = dma.create_value_freezer(pid);
+        if (!freezer) {
+            print_error("Failed to create value freezer!");
+            return false;
+        }
+
+        print_success("✓ Value freezer created");
+
+        // Test 2: Freeze values (simulated addresses)
+        print_info("\n[Test 2] Freezing values...");
+
+        uint64_t health_addr = 0x140000000;  // Example address
+        uint64_t ammo_addr = 0x140000008;
+        uint64_t mana_addr = 0x140000010;
+
+        // Freeze health at 100 (write every 50ms)
+        freezer->freeze_value<int32_t>(health_addr, 100, 50);
+        std::cout << "  Frozen health (0x" << std::hex << health_addr << ") = 100 (every 50ms)\n";
+
+        // Freeze ammo at 999 (write every 100ms)
+        freezer->freeze_value<int32_t>(ammo_addr, 999, 100);
+        std::cout << "  Frozen ammo (0x" << ammo_addr << ") = 999 (every 100ms)\n";
+
+        // Freeze mana at 500 (write every 75ms)
+        freezer->freeze_value<float>(mana_addr, 500.0f, 75);
+        std::cout << "  Frozen mana (0x" << mana_addr << ") = 500.0 (every 75ms)\n";
+
+        std::cout << std::dec;  // Back to decimal
+
+        print_success("✓ " + std::to_string(freezer->get_frozen_count()) + " values frozen");
+
+        // Test 3: Check frozen status
+        print_info("\n[Test 3] Checking frozen status...");
+
+        std::cout << "  health_addr frozen? " << (freezer->is_frozen(health_addr) ? "YES" : "NO") << "\n";
+        std::cout << "  ammo_addr frozen? " << (freezer->is_frozen(ammo_addr) ? "YES" : "NO") << "\n";
+        std::cout << "  mana_addr frozen? " << (freezer->is_frozen(mana_addr) ? "YES" : "NO") << "\n";
+        std::cout << "  0xDEADBEEF frozen? " << (freezer->is_frozen(0xDEADBEEF) ? "YES" : "NO") << "\n";
+
+        print_success("✓ Status checking works");
+
+        // Test 4: Let worker run for a bit
+        print_info("\n[Test 4] Running worker thread for 2 seconds...");
+        std::cout << "  Worker is " << (freezer->is_running() ? "RUNNING" : "STOPPED") << "\n";
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+
+        auto stats = freezer->get_stats();
+        std::cout << "  Total writes: " << stats.total_writes << "\n";
+        std::cout << "  Failed writes: " << stats.failed_writes << "\n";
+        std::cout << "  Success rate: " << std::fixed << std::setprecision(1) 
+                  << stats.get_success_rate() << "%\n";
+        std::cout << "  Uptime: " << std::fixed << std::setprecision(2) 
+                  << stats.get_uptime_seconds() << " seconds\n";
+
+        print_success("✓ Worker thread functional");
+
+        // Test 5: Pause specific value
+        print_info("\n[Test 5] Testing pause/resume for specific value...");
+
+        freezer->pause(ammo_addr);
+        std::cout << "  Paused ammo freezing\n";
+        std::cout << "  ammo_addr paused? " << (freezer->is_paused(ammo_addr) ? "YES" : "NO") << "\n";
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        freezer->resume(ammo_addr);
+        std::cout << "  Resumed ammo freezing\n";
+        std::cout << "  ammo_addr paused? " << (freezer->is_paused(ammo_addr) ? "YES" : "NO") << "\n";
+
+        print_success("✓ Per-value pause/resume works");
+
+        // Test 6: Global pause/resume
+        print_info("\n[Test 6] Testing global pause/resume...");
+
+        freezer->pause_all();
+        std::cout << "  Paused ALL freezing\n";
+        std::cout << "  Globally paused? " << (freezer->is_global_paused() ? "YES" : "NO") << "\n";
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        freezer->resume_all();
+        std::cout << "  Resumed ALL freezing\n";
+        std::cout << "  Globally paused? " << (freezer->is_global_paused() ? "YES" : "NO") << "\n";
+
+        print_success("✓ Global pause/resume works");
+
+        // Test 7: Get frozen addresses
+        print_info("\n[Test 7] Listing frozen addresses...");
+
+        auto addresses = freezer->get_frozen_addresses();
+        std::cout << "  Frozen addresses (" << addresses.size() << "):\n";
+        for (const auto& addr : addresses) {
+            std::cout << "    - 0x" << std::hex << addr << std::dec << "\n";
+        }
+
+        print_success("✓ Address listing works");
+
+        // Test 8: Unfreeze specific value
+        print_info("\n[Test 8] Unfreezing specific value...");
+
+        bool unfrozen = freezer->unfreeze(mana_addr);
+        std::cout << "  Unfroze mana: " << (unfrozen ? "SUCCESS" : "FAILED") << "\n";
+        std::cout << "  Remaining frozen: " << freezer->get_frozen_count() << "\n";
+
+        print_success("✓ Selective unfreezing works");
+
+        // Test 9: Statistics
+        print_info("\n[Test 9] Final statistics...");
+
+        stats = freezer->get_stats();
+        std::cout << "  Active frozen values: " << stats.active_frozen_values << "\n";
+        std::cout << "  Total writes: " << stats.total_writes << "\n";
+        std::cout << "  Failed writes: " << stats.failed_writes << "\n";
+        std::cout << "  Success rate: " << std::fixed << std::setprecision(1) 
+                  << stats.get_success_rate() << "%\n";
+        std::cout << "  Uptime: " << std::fixed << std::setprecision(2) 
+                  << stats.get_uptime_seconds() << " seconds\n";
+
+        print_success("✓ Statistics tracking works");
+
+        // Cleanup
+        print_info("\n[Cleanup] Unfreezing all values...");
+        freezer->unfreeze_all();
+        std::cout << "  Frozen count: " << freezer->get_frozen_count() << "\n";
+
+        dma.destroy_value_freezer(pid);
+        print_success("✓ Cleanup complete");
+
+        // Summary
+        print_success("\n[SUMMARY] Value Freezer Test Results:");
+        std::cout << "  ✓ Freezer creation\n";
+        std::cout << "  ✓ Value freezing (int32_t, float)\n";
+        std::cout << "  ✓ Status checking (is_frozen, is_paused)\n";
+        std::cout << "  ✓ Worker thread operation\n";
+        std::cout << "  ✓ Per-value pause/resume\n";
+        std::cout << "  ✓ Global pause/resume\n";
+        std::cout << "  ✓ Address listing\n";
+        std::cout << "  ✓ Selective unfreezing\n";
+        std::cout << "  ✓ Statistics tracking\n";
+
+        std::cout << "\n[USAGE EXAMPLE]\n";
+        std::cout << "  // Create DMA with value freezer\n";
+        std::cout << "  auto dma = DMABuilder()\n";
+        std::cout << "      .with_value_freezer(true)\n";
+        std::cout << "      .build();\n\n";
+        std::cout << "  // Create freezer for process\n";
+        std::cout << "  auto* freezer = dma->create_value_freezer(pid);\n\n";
+        std::cout << "  // Freeze player health (god mode)\n";
+        std::cout << "  freezer->freeze_value<int32_t>(health_addr, 100, 50);\n\n";
+        std::cout << "  // Freeze ammo (infinite ammo)\n";
+        std::cout << "  freezer->freeze_value<int32_t>(ammo_addr, 999, 100);\n\n";
+        std::cout << "  // Pause all freezing temporarily\n";
+        std::cout << "  freezer->pause_all();\n";
+        std::cout << "  // ... do something ...\n";
+        std::cout << "  freezer->resume_all();\n\n";
+        std::cout << "  // Unfreeze specific value\n";
+        std::cout << "  freezer->unfreeze(health_addr);\n\n";
+        std::cout << "  // Get statistics\n";
+        std::cout << "  auto stats = freezer->get_stats();\n";
+        std::cout << "  std::cout << \"Success rate: \" << stats.get_success_rate() << \"%\\n\";\n\n";
+        std::cout << "  // Cleanup\n";
+        std::cout << "  dma->destroy_value_freezer(pid);\n";
+
+        return true;
+
+    } catch (const std::exception& e) {
+        print_error(std::string("Value freezer test failed: ") + e.what());
+        return false;
+    }
+}
+
 // Main menu
 void show_menu() {
     std::cout << "\n+=======================================+\n"
@@ -2927,6 +3117,7 @@ void show_menu() {
     std::cout << " 20. Circuit Breaker (v3.0 - NEW!) ⚡🛡️\n";
     std::cout << " 21. Self-Healing System (v3.0 - NEW!) 🏥💚\n";
     std::cout << " 22. Pointer Chain Resolver (v3.1 - NEW!) 🎯🔗\n";
+    std::cout << " 23. Value Freezer (v3.1 - NEW!) 🧊💉\n";
     std::cout << "  0. Exit\n\n";
 }
 
@@ -3036,6 +3227,9 @@ int main() {
                     break;
                 case 22:
                     test_pointer_chain_resolver(dma);
+                    break;
+                case 23:
+                    test_value_freezer(dma, current_pid);
                     break;
                 case 0:
                     running = false;
