@@ -20,13 +20,15 @@ struct BatchOperations::Impl {
     Impl() : stats_enabled(true), vmm_handle(nullptr) {}
 };
 
+// ✅ FIX: Use unique_ptr for automatic memory management (RAII)
+// This prevents memory leaks even if exceptions occur during destruction
 BatchOperations::BatchOperations()
-    : pimpl_(new Impl()) {
+    : pimpl_(std::make_unique<Impl>()) {
 }
 
-BatchOperations::~BatchOperations() {
-    delete pimpl_;
-}
+// ✅ Destructor not needed - unique_ptr handles cleanup automatically
+// Keeping it empty for clarity (can be removed later)
+BatchOperations::~BatchOperations() = default;
 
 void BatchOperations::set_vmm_handle(void* handle) {
     if (pimpl_) {

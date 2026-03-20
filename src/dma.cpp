@@ -173,13 +173,19 @@ DMA::DMA(bool use_memory_map, std::shared_ptr<Logger> logger)
 //==============================================================================
 // Destructor
 //==============================================================================
-DMA::~DMA() {
-    // Clean up
-    if (health_monitor_) {
-        stop_automatic_health_monitoring();
-    }
+DMA::~DMA() noexcept {
+    // ✅ FIX: Added noexcept to prevent exceptions from destructor
+    // Destructors must never throw exceptions
+    try {
+        if (health_monitor_) {
+            stop_automatic_health_monitoring();
+        }
 
-    clean_fpga();
+        clean_fpga();
+    } catch (...) {
+        // ✅ Silently ignore exceptions in destructor
+        // Logging is not available at this point (logger might be destroyed)
+    }
 
     // Unique pointers will clean up automatically
     // handle will be closed by vmm_close lambda
@@ -384,8 +390,11 @@ T DMA::read(uint64_t address, DWORD process_id) const {
             auto end = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-            metrics_->record_read(sizeof(T), duration.count(), true);
-            metrics_->record_cache_hit();
+            // ✅ FIX: Check metrics_ before accessing (cache hit path)
+            if (metrics_) {
+                metrics_->record_read(sizeof(T), duration.count(), true);
+                metrics_->record_cache_hit();
+            }
 
             // ✅ Log cache hit (v2.9)
             if (logger_) {
@@ -398,7 +407,10 @@ T DMA::read(uint64_t address, DWORD process_id) const {
 
             return value;
         }
-        metrics_->record_cache_miss();
+        // ✅ FIX: Check metrics_ before accessing (cache miss)
+        if (metrics_) {
+            metrics_->record_cache_miss();
+        }
     }
     
     // Read from DMA
@@ -420,7 +432,10 @@ T DMA::read(uint64_t address, DWORD process_id) const {
 
     // ✅ Explicit null/partial read checks for safety
     if (!success) {
-        metrics_->record_read(bytes_read, duration.count(), false);
+        // ✅ FIX: Check metrics_ before accessing (defensive programming)
+        if (metrics_) {
+            metrics_->record_read(bytes_read, duration.count(), false);
+        }
 
         // ✅ Log DMA read failure (v2.9)
         if (logger_) {
@@ -435,7 +450,10 @@ T DMA::read(uint64_t address, DWORD process_id) const {
     }
 
     if (bytes_read == 0) {
-        metrics_->record_read(0, duration.count(), false);
+        // ✅ FIX: Check metrics_ before accessing
+        if (metrics_) {
+            metrics_->record_read(0, duration.count(), false);
+        }
 
         // ✅ Log zero bytes read (v2.9)
         if (logger_) {
@@ -450,7 +468,10 @@ T DMA::read(uint64_t address, DWORD process_id) const {
     }
 
     if (bytes_read != sizeof(T)) {
-        metrics_->record_read(bytes_read, duration.count(), false);
+        // ✅ FIX: Check metrics_ before accessing
+        if (metrics_) {
+            metrics_->record_read(bytes_read, duration.count(), false);
+        }
 
         // ✅ Log partial read (v2.9)
         if (logger_) {
@@ -473,7 +494,10 @@ T DMA::read(uint64_t address, DWORD process_id) const {
         cache_->put(address, data);
     }
 
-    metrics_->record_read(sizeof(T), duration.count(), true);
+    // ✅ FIX: Check metrics_ before accessing (successful read)
+    if (metrics_) {
+        metrics_->record_read(sizeof(T), duration.count(), true);
+    }
 
     // ✅ Log successful DMA read (v2.9)
     if (logger_) {
@@ -1143,6 +1167,12 @@ const PointerChainManager* DMA::get_pointer_chain_manager() const noexcept {
 //==============================================================================
 // Value Freezer (v3.1 - RE Tools)
 //==============================================================================
+// ⚠️ WARNING: Thread Safety Issue
+// The get_value_freezer() method returns a raw pointer which could become
+// invalid if destroy_value_freezer() is called from another thread.
+// USAGE: Ensure that only one thread manages the lifecycle of value freezers,
+// or use proper synchronization when accessing freezers across threads.
+// TODO: Consider using shared_ptr<ValueFreezer> for thread-safe access in future versions.
 
 ValueFreezer* DMA::create_value_freezer(DWORD process_id) {
     std::lock_guard<std::mutex> lock(value_freezers_mutex_);
@@ -1166,6 +1196,10 @@ void DMA::destroy_value_freezer(DWORD process_id) {
 }
 
 ValueFreezer* DMA::get_value_freezer(DWORD process_id) noexcept {
+    // ⚠️ WARNING: This returns raw pointer without holding the lock
+    // The pointer can become invalid if destroy_value_freezer() is called
+    // from another thread while the pointer is being used.
+    // Recommendation: Use the pointer immediately, or ensure single-threaded access.
     std::lock_guard<std::mutex> lock(value_freezers_mutex_);
     auto it = value_freezers_.find(process_id);
     if (it != value_freezers_.end()) {
@@ -1177,6 +1211,8 @@ ValueFreezer* DMA::get_value_freezer(DWORD process_id) noexcept {
 //==============================================================================
 // Enhanced Pattern Scanner (v3.1 - RE Tools)
 //==============================================================================
+// ⚠️ WARNING: Thread Safety Issue - Same as ValueFreezer above
+// See: get_value_freezer() documentation for details
 
 EnhancedPatternScanner* DMA::create_pattern_scanner(DWORD process_id) {
     std::lock_guard<std::mutex> lock(pattern_scanners_mutex_);
@@ -1200,6 +1236,8 @@ void DMA::destroy_pattern_scanner(DWORD process_id) {
 }
 
 EnhancedPatternScanner* DMA::get_pattern_scanner(DWORD process_id) noexcept {
+    // ⚠️ WARNING: Same thread safety issue as get_value_freezer()
+    // This returns raw pointer without holding the lock after releasing it.
     std::lock_guard<std::mutex> lock(pattern_scanners_mutex_);
     auto it = pattern_scanners_.find(process_id);
     if (it != pattern_scanners_.end()) {
