@@ -23,9 +23,10 @@ std::optional<std::vector<uint8_t>> MemoryCache::get(uint64_t addr, size_t size)
     // Create cache key (address + size)
     uint64_t key = make_cache_key(addr, size);
     
-    // Try to find in cache (shared lock for reading)
+    // ✅ FIX: Use exclusive lock when modifying shared state (hit_count, hits_, misses_)
+    // Even though we're mostly reading, we need to modify hit_count and statistics
     {
-        std::shared_lock<std::shared_mutex> lock(cache_mutex_);
+        std::unique_lock<std::shared_mutex> lock(cache_mutex_);
         
         auto it = cache_.find(key);
         if (it != cache_.end()) {
@@ -37,13 +38,16 @@ std::optional<std::vector<uint8_t>> MemoryCache::get(uint64_t addr, size_t size)
             
             // Cache hit!
             hits_++;
-            it->second.hit_count++;
+            it->second.hit_count++;  // ✅ Now safely modifying under exclusive lock
             return it->second.data;
         }
     }
     
-    // Cache miss
-    misses_++;
+    // Cache miss - acquire lock again for stats update
+    {
+        std::unique_lock<std::shared_mutex> lock(cache_mutex_);
+        misses_++;  // ✅ Now safely modifying under exclusive lock
+    }
     return std::nullopt;
 }
 

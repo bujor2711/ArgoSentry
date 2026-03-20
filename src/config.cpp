@@ -27,13 +27,17 @@ void DMAConfiguration::reset_to_defaults() {
 bool DMAConfiguration::load_from_file(const std::string& filepath) {
     std::ifstream file(filepath);
     if (!file.is_open()) {
-        std::cerr << "[Config] Failed to open config file: " << filepath << std::endl;
+        // ✅ FIX: More detailed error reporting
+        std::cerr << "[Config ERROR] Failed to open config file: " << filepath << std::endl;
+        std::cerr << "[Config] Using default configuration" << std::endl;
+        reset_to_defaults();
         return false;
     }
 
     std::string line;
     std::string current_section;
     int line_number = 0;
+    bool has_errors = false;
 
     while (std::getline(file, line)) {
         ++line_number;
@@ -54,7 +58,9 @@ bool DMAConfiguration::load_from_file(const std::string& filepath) {
         // Parse key=value pair
         size_t equals_pos = line.find('=');
         if (equals_pos == std::string::npos) {
-            std::cerr << "[Config] Invalid line " << line_number << ": " << line << std::endl;
+            // ✅ FIX: Better error reporting for malformed lines
+            std::cerr << "[Config WARNING] Line " << line_number << ": Invalid syntax (no '=' found): " << line << std::endl;
+            has_errors = true;
             continue;
         }
 
@@ -68,48 +74,85 @@ bool DMAConfiguration::load_from_file(const std::string& filepath) {
         }
         value = trim(value);
 
+        // ✅ FIX: Validate key and value not empty
+        if (key.empty() || value.empty()) {
+            std::cerr << "[Config WARNING] Line " << line_number << ": Empty key or value" << std::endl;
+            has_errors = true;
+            continue;
+        }
+
         parse_ini_line(current_section, key, value);
     }
 
-    std::cout << "[Config] Successfully loaded configuration from: " << filepath << std::endl;
-    return true;
+    if (has_errors) {
+        std::cerr << "[Config] Configuration loaded with errors (using defaults for invalid values)" << std::endl;
+    } else {
+        std::cout << "[Config] Successfully loaded configuration from: " << filepath << std::endl;
+    }
+    
+    file.close();
+    return !has_errors;
 }
 
 bool DMAConfiguration::save_to_file(const std::string& filepath) const {
     std::ofstream file(filepath);
     if (!file.is_open()) {
-        std::cerr << "[Config] Failed to create config file: " << filepath << std::endl;
+        // ✅ FIX: Better error reporting
+        std::cerr << "[Config ERROR] Failed to create/open config file: " << filepath << std::endl;
+        std::cerr << "[Config] Check directory permissions and disk space" << std::endl;
         return false;
     }
 
-    file << "; VolkDMA Configuration File\n";
-    file << "; Auto-generated\n\n";
+    try {
+        file << "; VolkDMA Configuration File\n";
+        file << "; Auto-generated\n\n";
 
-    // FPGA Section
-    file << "[FPGA]\n";
-    file << "algorithm = " << fpga_algorithm_ << "\n";
-    file << "min_version_major = " << fpga_min_version_major_ << "\n";
-    file << "min_version_major_alt = " << fpga_min_version_major_alt_ << "\n";
-    file << "min_version_minor = " << fpga_min_version_minor_ << "\n\n";
+        // FPGA Section
+        file << "[FPGA]\n";
+        file << "algorithm = " << fpga_algorithm_ << "\n";
+        file << "min_version_major = " << fpga_min_version_major_ << "\n";
+        file << "min_version_major_alt = " << fpga_min_version_major_alt_ << "\n";
+        file << "min_version_minor = " << fpga_min_version_minor_ << "\n\n";
 
-    // Scanning Section
-    file << "[Scanning]\n";
-    file << "chunk_size = " << scan_chunk_size_ << "  ; bytes\n\n";
+        // Scanning Section
+        file << "[Scanning]\n";
+        file << "chunk_size = " << scan_chunk_size_ << "  ; bytes\n\n";
 
-    // Memory Section
-    file << "[Memory]\n";
-    file << "max_safe_read_size = " << max_safe_read_size_ << "  ; bytes\n\n";
+        // Memory Section
+        file << "[Memory]\n";
+        file << "max_safe_read_size = " << max_safe_read_size_ << "  ; bytes\n\n";
 
-    // Metrics Section
-    file << "[Metrics]\n";
-    file << "enabled = " << (metrics_enabled_ ? "true" : "false") << "\n\n";
+        // Metrics Section
+        file << "[Metrics]\n";
+        file << "enabled = " << (metrics_enabled_ ? "true" : "false") << "\n\n";
 
-    // Logging Section
-    file << "[Logging]\n";
-    file << "level = " << log_level_ << "  ; debug, info, warn, error\n";
+        // Logging Section
+        file << "[Logging]\n";
+        file << "level = " << log_level_ << "  ; debug, info, warn, error\n";
 
-    std::cout << "[Config] Successfully saved configuration to: " << filepath << std::endl;
-    return true;
+        // ✅ FIX: Check for write errors
+        if (!file.good()) {
+            // ✅ FIX: Detect I/O errors during write
+            std::cerr << "[Config ERROR] I/O error while writing config file: " << filepath << std::endl;
+            file.close();
+            return false;
+        }
+
+        file.close();
+
+        // ✅ FIX: Verify file was written
+        if (!file.good()) {
+            std::cerr << "[Config ERROR] Failed to close config file properly" << std::endl;
+            return false;
+        }
+
+        std::cout << "[Config] Successfully saved configuration to: " << filepath << std::endl;
+        return true;
+    } catch (const std::exception& ex) {
+        // ✅ FIX: Catch any exception during file operations
+        std::cerr << "[Config ERROR] Exception while saving config: " << ex.what() << std::endl;
+        return false;
+    }
 }
 
 void DMAConfiguration::parse_ini_line(const std::string& section, const std::string& key, const std::string& value) {

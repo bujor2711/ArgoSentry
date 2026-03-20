@@ -77,97 +77,121 @@ DMA::DMA(bool use_memory_map, std::shared_ptr<Logger> logger)
         LOG_INFO(logger_, "DMA device initialized successfully");
     }
 
-    // Initialize all subsystems
-    metrics_ = std::make_unique<Metrics::MetricsCollector>();
-    cache_ = std::make_unique<Cache::MemoryCache>();
-    memory_analyzer_ = std::make_unique<MemoryLayout::MemoryLayoutAnalyzer>();
-    batch_ops_ = std::make_unique<BatchOperations>();
-    memory_differ_ = std::make_unique<MemoryDiffer>();
-    rate_limiter_ = std::make_unique<RateLimiter>(0);  // v2.3: Disabled by default
+    // ✅ FIX: Wrap subsystem initialization in try-catch for better exception safety
+    try {
+        // Initialize all subsystems
+        metrics_ = std::make_unique<Metrics::MetricsCollector>();
+        cache_ = std::make_unique<Cache::MemoryCache>();
+        memory_analyzer_ = std::make_unique<MemoryLayout::MemoryLayoutAnalyzer>();
+        batch_ops_ = std::make_unique<BatchOperations>();
+        memory_differ_ = std::make_unique<MemoryDiffer>();
+        rate_limiter_ = std::make_unique<RateLimiter>(0);  // v2.3: Disabled by default
 
-    // Set VMM handle for batch operations
-    batch_ops_->set_vmm_handle(handle_.get());
+        // Set VMM handle for batch operations
+        batch_ops_->set_vmm_handle(handle_.get());
 
-    // Health monitoring is optional, not initialized by default
-    health_monitor_ = nullptr;
+        // Health monitoring is optional, not initialized by default
+        health_monitor_ = nullptr;
 
-    // Optionally load memory map
-    if (use_memory_map) {
-        if (logger_) {
-            LOG_DEBUG(logger_, "Loading memory map...");
-        }
-        dump_memory_map();
-    }
-
-    // Initialize circuit breaker (v3.0)
-    // Default config: 5 failures, 30s timeout, 2 successes to close
-    CircuitBreakerConfig cb_config;
-    cb_config.failure_threshold = 5;
-    cb_config.open_timeout = std::chrono::seconds(30);
-    cb_config.success_threshold = 2;
-    cb_config.on_state_change = [this](CircuitState old_state, CircuitState new_state) {
-        if (logger_) {
-            std::string msg = "Circuit breaker state transition: " +
-                            std::string(to_string(old_state)) + " -> " +
-                            std::string(to_string(new_state));
-            LOG_WARN(logger_, msg);
-        }
-    };
-    circuit_breaker_ = std::make_unique<CircuitBreaker>(cb_config);
-
-    // Initialize self-healing system (v3.0)
-    // Default config: Exponential backoff, 3 retries, auto-reconnect enabled
-    SelfHealingConfig sh_config;
-    sh_config.retry_policy = RetryPolicy::EXPONENTIAL;
-    sh_config.max_retry_attempts = 3;
-    sh_config.initial_retry_delay = std::chrono::milliseconds(100);
-    sh_config.max_retry_delay = std::chrono::milliseconds(5000);
-    sh_config.use_circuit_breaker = true;
-    sh_config.auto_reconnect = true;
-    sh_config.enable_health_checks = true;
-
-    // Setup retry callback for logging
-    sh_config.on_retry_attempt = [this](const std::string& operation, size_t attempt, const std::error_code& error) {
-        if (logger_) {
-            std::string msg = "Self-healing retry attempt " + std::to_string(attempt) +
-                            " for '" + operation + "' (error: " + error.message() + ")";
-            LOG_WARN(logger_, msg);
-        }
-    };
-
-    sh_config.on_retry_exhausted = [this](const std::string& operation, size_t total_attempts) {
-        if (logger_) {
-            std::string msg = "Self-healing exhausted " + std::to_string(total_attempts) +
-                            " attempts for '" + operation + "' - operation failed";
-            LOG_ERROR(logger_, msg);
-        }
-    };
-
-    sh_config.on_reconnect_start = [this]() {
-        if (logger_) {
-            LOG_WARN(logger_, "Self-healing: Attempting DMA reconnection...");
-        }
-    };
-
-    sh_config.on_reconnect_complete = [this](bool success) {
-        if (logger_) {
-            if (success) {
-                LOG_INFO(logger_, "Self-healing: DMA reconnection successful");
-            } else {
-                LOG_ERROR(logger_, "Self-healing: DMA reconnection failed");
+        // Optionally load memory map
+        if (use_memory_map) {
+            if (logger_) {
+                LOG_DEBUG(logger_, "Loading memory map...");
             }
+            dump_memory_map();
         }
-    };
 
-    self_healing_ = std::make_unique<SelfHealing>(sh_config, circuit_breaker_.get());
+        // Initialize circuit breaker (v3.0)
+        // Default config: 5 failures, 30s timeout, 2 successes to close
+        CircuitBreakerConfig cb_config;
+        cb_config.failure_threshold = 5;
+        cb_config.open_timeout = std::chrono::seconds(30);
+        cb_config.success_threshold = 2;
+        cb_config.on_state_change = [this](CircuitState old_state, CircuitState new_state) {
+            if (logger_) {
+                std::string msg = "Circuit breaker state transition: " +
+                                std::string(to_string(old_state)) + " -> " +
+                                std::string(to_string(new_state));
+                LOG_WARN(logger_, msg);
+            }
+        };
+        circuit_breaker_ = std::make_unique<CircuitBreaker>(cb_config);
 
-    // Initialize pointer chain manager (v3.1 - RE Tools)
-    pointer_chain_manager_ = std::make_unique<PointerChainManager>();
+        // Initialize self-healing system (v3.0)
+        // Default config: Exponential backoff, 3 retries, auto-reconnect enabled
+        SelfHealingConfig sh_config;
+        sh_config.retry_policy = RetryPolicy::EXPONENTIAL;
+        sh_config.max_retry_attempts = 3;
+        sh_config.initial_retry_delay = std::chrono::milliseconds(100);
+        sh_config.max_retry_delay = std::chrono::milliseconds(5000);
+        sh_config.use_circuit_breaker = true;
+        sh_config.auto_reconnect = true;
+        sh_config.enable_health_checks = true;
 
-    if (logger_) {
-        LOG_INFO(logger_, "All DMA subsystems initialized successfully");
+        // Setup retry callback for logging
+        sh_config.on_retry_attempt = [this](const std::string& operation, size_t attempt, const std::error_code& error) {
+            if (logger_) {
+                std::string msg = "Self-healing retry attempt " + std::to_string(attempt) +
+                                " for '" + operation + "' (error: " + error.message() + ")";
+                LOG_WARN(logger_, msg);
+            }
+        };
+
+        sh_config.on_retry_exhausted = [this](const std::string& operation, size_t total_attempts) {
+            if (logger_) {
+                std::string msg = "Self-healing exhausted " + std::to_string(total_attempts) +
+                                " attempts for '" + operation + "' - operation failed";
+                LOG_ERROR(logger_, msg);
+            }
+        };
+
+        sh_config.on_reconnect_start = [this]() {
+            if (logger_) {
+                LOG_WARN(logger_, "Self-healing: Attempting DMA reconnection...");
+            }
+        };
+
+        sh_config.on_reconnect_complete = [this](bool success) {
+            if (logger_) {
+                if (success) {
+                    LOG_INFO(logger_, "Self-healing: DMA reconnection successful");
+                } else {
+                    LOG_ERROR(logger_, "Self-healing: DMA reconnection failed");
+                }
+            }
+        };
+
+        self_healing_ = std::make_unique<SelfHealing>(sh_config, circuit_breaker_.get());
+
+        // Initialize pointer chain manager (v3.1 - RE Tools)
+        pointer_chain_manager_ = std::make_unique<PointerChainManager>();
+
+        if (logger_) {
+            LOG_INFO(logger_, "All DMA subsystems initialized successfully");
+        }
+        std::cout << "[VolkDMA] Successfully initialized with FPGA hardware\n";
+    } 
+    catch (const std::exception& ex) {
+        // ✅ FIX: Provide better error reporting for initialization failures
+        if (logger_) {
+            std::string error_msg = "DMA constructor failed during subsystem initialization: ";
+            error_msg += ex.what();
+            LOG_ERROR(logger_, error_msg);
+        }
+        std::cerr << "[VolkDMA ERROR] Initialization failed: " << ex.what() << std::endl;
+        
+        // ✅ FIX: Ensure all members are in valid state before throwing
+        // (unique_ptrs will auto-cleanup their current allocations)
+        throw;  // Re-throw to indicate construction failure
     }
-    std::cout << "[VolkDMA] Successfully initialized with FPGA hardware\n";
+    catch (...) {
+        // ✅ FIX: Catch and report unknown exceptions
+        if (logger_) {
+            LOG_ERROR(logger_, "DMA constructor failed: unknown exception");
+        }
+        std::cerr << "[VolkDMA ERROR] Initialization failed: unknown exception" << std::endl;
+        throw;  // Re-throw
+    }
 }
 
 //==============================================================================
